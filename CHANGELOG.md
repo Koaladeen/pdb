@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+- Fix: switching the language back from a translated one (e.g. Lithuanian → German) did not stick -
+  the page reloaded before the choice was saved.
+
 ## 0.2.0 – installer
 
 - **PDB-Setup.exe**: wizard installer for one PC in German, English, Italian and Lithuanian:

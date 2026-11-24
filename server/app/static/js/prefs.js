@@ -66,8 +66,14 @@ const saveToServer = debounce(() => {
 }, 600);
 
 // Change some settings: shown at once, saved to the server shortly after.
-export function setPrefs(patch) {
-  applyPrefs({ ...current, ...patch });
+// A language change may reload the page (to get the German texts back), so it is saved FIRST -
+// otherwise the reload loads the old language from the server again.
+export async function setPrefs(patch) {
+  const next = { ...current, ...patch };
+  if (patch.language !== undefined && patch.language !== current.language) {
+    try { await api.put("/auth/me/preferences", next); } catch { /* kept locally; saved next time */ }
+  }
+  applyPrefs(next);
   saveToServer();
 }
 
