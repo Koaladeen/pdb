@@ -1,0 +1,8 @@
+# PDB Bridge: lets the PDB Helper open files in this running Mastercam.
+# Load at every start: Datei > Konfiguration > Start/Ende > Systemstart = PdbBridge.dll
+APPLICATION "_PdbBridge_"
+FUNC_DLL   "PdbBridge.dll"
+RES_DLL    "SAME"
+CATEGORY   "PDB"
+FUNCTION NET "Run"
+END_FUNCTION

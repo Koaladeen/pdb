@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Mastercam add-in (NET-Hook). One source, two builds:
+       net48            -> Mastercam 2025 (NETHook3_0.dll for .NET Framework 4.8)
+       net10.0-windows  -> Mastercam 2027 (NETHook3_0.dll for .NET 10) -->
+  <PropertyGroup>
+    <TargetFrameworks>net48;net10.0-windows</TargetFrameworks>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>PdbBridge</AssemblyName>
+    <RootNamespace>PdbBridge</RootNamespace>
+    <Version>0.3.0</Version>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <Reference Include="NETHook3_0">
+      <HintPath>C:\Program Files\Mastercam\NETHook3_0.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows'">
+    <Reference Include="NETHook3_0">
+      <HintPath>C:\Program Files\Mastercam2027\NETHook3_0.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

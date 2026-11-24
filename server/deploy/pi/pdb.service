@@ -1,0 +1,22 @@
+[Unit]
+Description=PDB server (Mastercam file management)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pdb
+Group=pdb
+WorkingDirectory=/opt/pdb
+EnvironmentFile=/etc/pdb.env
+ExecStart=/opt/pdb/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=3
+# The server only needs its own data folder.
+ProtectSystem=strict
+ReadWritePaths=/var/lib/pdb
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,38 @@
+PDB - Mastercam programų failų valdymas
+=======================================
+
+PDB tvarko jūsų Mastercam programas: kiekvienai detalei kortelė su operacijomis, kiekviena
+operacija su savo MDM numeriu ir aplanku, failų užraktai redaguojant, versijos, NC eksportas,
+staklių keitimas. Sąsaja: vokiečių, anglų, italų ir lietuvių kalbomis. Šis paketas paleidžia
+PDB jūsų kompiuteryje su jūsų pačių duomenų baze – serverio ir administratoriaus teisių nereikia.
+
+ĮDIEGIMAS (vieną kartą)
+1. Išskleiskite šį aplanką į nuolatinę vietą, pvz. Dokumentai\PDB-App.
+2. Reikia Python 3.11 ar naujesnio:  winget install Python.Python.3.12
+   arba python.org (diegiant pažymėkite "Add python.exe to PATH").
+3. Dukart spustelėkite  Start-PDB.cmd
+   - Pasirinkite 1 = sava duomenų bazė (arba 2 = demo su pavyzdiniais duomenimis).
+   - Bus pasiūlyta sukurti nuorodas „PDB“ / „PDB beenden“ ir paleidimą prisijungus.
+4. Atsidarys naršyklė. Prisijunkite kaip Administratorius, slaptažodis  admin , nustatykite savo
+   slaptažodį. Sąrankos vedlys paklaus aplankų (Mastercam ir NC), laukų, staklių ir numeracijos.
+   Kalba: „Mano profilis“ (jūsų vardas viršuje dešinėje) -> Išvaizda -> Kalba -> Lietuvių.
+
+KASDIEN
+- Paleisti: nuoroda „PDB“. PDB veikia fone.   Sustabdyti: nuoroda „PDB beenden“ (Stop-PDB.cmd).
+
+ESAMI MASTERCAM FAILAI
+Administratorius -> „Importas“: pasirinkite aplanką, nurodykite jo vietą (pvz.
+C:\Users\jūs\Documents\Senos programos), sugrupuokite failus į korteles ir importuokite. Kiekvienas
+failas gauna MDM numerį ir yra NUKOPIJUOJAMAS į savo PDB aplanką; originalai nekeičiami.
+
+FAILŲ ATIDARYMAS MASTERCAM (PDB Helper)
+Start-PDB paleidžia ir PDB Helper (piktograma prie laikrodžio). Vieną kartą (Mastercam 2025+):
+dešiniu pelės mygtuku ant piktogramos -> „Mastercam-Bridge einrichten“, tada iš naujo paleiskite
+Mastercam. Windows gali įspėti apie nepasirašytą PdbHelper.exe ("More info" -> "Run anyway").
+
+DUOMENYS IR ATSARGINĖS KOPIJOS
+- Duomenų bazė: %LOCALAPPDATA%\PDB\server\pdb.sqlite3
+- Atsarginės kopijos: %LOCALAPPDATA%\PDB\server\files\backups (automatiškai kasdien, 14 paskutinių)
+
+PARINKTYS: -Console (serveris lange), -Port 8080, -Network (pasiekiama iš kitų kompiuterių),
+-Shortcuts (nuorodos iš naujo), -Reset (nauja duomenų bazė, sena išsaugoma kaip kopija).

@@ -1,0 +1,37 @@
+# Allow-list: only the source code goes into git. Everything else in this folder (data, backups,
+# screenshots, tools, notes) stays out - add a new top-level folder here explicitly if it belongs in.
+/*
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/LICENSE
+!/CHANGELOG.md
+!/server/
+!/helper/
+!/install/
+!/mastercam-addin/
+
+# server: local data and environment
+server/.venv/
+server/data/
+server/demo-data/
+server/dev-data/
+server/*.sqlite3*
+server/*.log
+# scripts tied to one company's data
+server/scripts/demo_data.py
+server/scripts/setup_test_data.py
+server/scripts/import_xdb.py
+__pycache__/
+.pytest_cache/
+
+# helper: build output and local settings
+helper/.vs/
+bin/
+obj/
+helper/release/
+helper/dist/
+helper/dist-new/
+helper/release.local
+# built bridge DLLs (helper/release.sh builds them)
+mastercam-addin/**/*.dll

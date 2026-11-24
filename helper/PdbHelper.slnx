@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="PdbBridge/PdbBridge.csproj" />
+  <Project Path="PdbHelper.Tests/PdbHelper.Tests.csproj" />
+  <Project Path="PdbHelper/PdbHelper.csproj" />
+</Solution>
