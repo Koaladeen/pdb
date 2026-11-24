@@ -10,6 +10,8 @@
 !/helper/
 !/install/
 !/mastercam-addin/
+!/installer/
+!/VERSION
 
 # server: local data and environment
 server/.venv/
@@ -33,5 +35,9 @@ helper/release/
 helper/dist/
 helper/dist-new/
 helper/release.local
+# installer: downloaded Python/packages and build output (installer/build.sh recreates them)
+installer/cache/
+installer/build/
+
 # built bridge DLLs (helper/release.sh builds them)
 mastercam-addin/**/*.dll

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- PDB.exe: start / stop / uninstall an installation (what the shortcuts run). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AssemblyName>PDB</AssemblyName>
+    <RootNamespace>Pdb.Install</RootNamespace>
+    <ApplicationManifest>..\Common\app.manifest</ApplicationManifest>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <Version>0.2.0</Version>
+    <Product>PDB</Product>
+    <AssemblyTitle>PDB</AssemblyTitle>
+    <NoWarn>CS8632</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\Common\*.cs" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+</Project>

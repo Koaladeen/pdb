@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 – installer
+
+- **PDB-Setup.exe**: wizard installer for one PC in German, English, Italian and Lithuanian:
+  folders, shortcuts, start at login, PDB Helper and Mastercam bridge, port, network access, own
+  database or demo. Per-user, no admin rights; Python 3.12 is included, works offline.
+- **PDB.exe** launcher: start in the background, stop, uninstall (Windows Settings → Apps).
+- Updates keep data and settings; an existing database from the zip package is taken over.
+
+
 ## 0.1.0 – first release
 
 - Part cards with operations; consecutive MDM numbers, NC program numbers per machine (FANUC).

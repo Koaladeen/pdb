@@ -35,7 +35,7 @@ def create_app(config: Config | None = None) -> FastAPI:
             stop_backups.set()
         db.engine.dispose()
 
-    app = FastAPI(title="PDB - Dateiverwaltung", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="PDB - Dateiverwaltung", version=(Path(__file__).resolve().parents[2] / "VERSION").read_text().strip() if (Path(__file__).resolve().parents[2] / "VERSION").exists() else "dev", lifespan=lifespan)
     app.state.config = config
     app.state.db = db
     for r in (setup, auth, catalog, customers, articles, locks, pictures_router, imports, file_import, downloads, admin):

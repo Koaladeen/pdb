@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- PDB-Setup.exe: wizard + the whole payload (Python, server, PDB Helper, PDB.exe) as one resource.
+       Build with installer/build.sh (it creates build/payload.zip first). .NET Framework 4.8 = on every Windows 10/11. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AssemblyName>PdbSetup</AssemblyName>
+    <RootNamespace>Pdb.Install</RootNamespace>
+    <ApplicationManifest>..\Common\app.manifest</ApplicationManifest>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <Version>0.2.0</Version>
+    <Product>PDB</Product>
+    <AssemblyTitle>PDB Setup</AssemblyTitle>
+    <NoWarn>CS8632</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\Common\*.cs" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <EmbeddedResource Include="..\build\payload.zip" LogicalName="payload.zip" Condition="Exists('..\build\payload.zip')" />
+  </ItemGroup>
+</Project>
