@@ -12,7 +12,7 @@ namespace Pdb.Install
             if (args.Contains("--silent")) return Setup.RunSilent(args);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Wizard());
+            Application.Run(new Wizard(args));
             return 0;
         }
     }

@@ -33,11 +33,11 @@ namespace Pdb.Install
         Label? status;
         TextBox? log;
 
-        public Wizard()
+        public Wizard(string[] args)
         {
             previous = InstallConfig.FindInstalled();
-            cfg = previous ?? new InstallConfig();
-            L.Lang = previous?.Language ?? L.Detect();
+            cfg = Setup.FromArgs(previous ?? new InstallConfig(), args);
+            L.Lang = Array.IndexOf(args, "--lang") >= 0 ? cfg.Language : previous?.Language ?? L.Detect();
             cfg.Language = L.Lang;
 
             Text = "PDB Setup " + Setup.Version;

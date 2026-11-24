@@ -179,19 +179,8 @@ namespace Pdb.Install
         /// [--demo] (password from PDB_DEMO_ADMIN_PASSWORD) [--no-start]. Exit code 0 = ok.</summary>
         public static int RunSilent(string[] args)
         {
-            string? Arg(string name) { var i = Array.IndexOf(args, name); return i >= 0 && i + 1 < args.Length ? args[i + 1] : null; }
             bool Has(string name) => args.Contains(name);
-            var c = InstallConfig.FindInstalled() ?? new InstallConfig();
-            c.InstallDir = Arg("--dir") ?? c.InstallDir;
-            c.DataDir = Arg("--data") ?? c.DataDir;
-            if (int.TryParse(Arg("--port"), out var port)) c.Port = port;
-            if (Has("--network")) c.Network = true;
-            if (Has("--no-desktop")) c.DesktopShortcut = false;
-            if (Has("--no-startmenu")) c.StartMenu = false;
-            if (Has("--autostart")) c.Autostart = true;
-            if (Has("--no-helper")) c.Helper = false;
-            if (Has("--no-bridge")) c.Bridge = false;
-            c.Language = L.Lang = Arg("--lang") ?? c.Language;
+            var c = FromArgs(InstallConfig.FindInstalled() ?? new InstallConfig(), args);
             var o = new InstallOptions
             {
                 ResetDatabase = Has("--reset"),
@@ -208,6 +197,24 @@ namespace Pdb.Install
                 Log("FAILED: " + ex);
                 return 1;
             }
+        }
+
+        /// <summary>Command line choices (silent install, or preset values in the wizard).</summary>
+        public static InstallConfig FromArgs(InstallConfig c, string[] args)
+        {
+            string? Arg(string name) { var i = Array.IndexOf(args, name); return i >= 0 && i + 1 < args.Length ? args[i + 1] : null; }
+            bool Has(string name) => args.Contains(name);
+            c.InstallDir = Arg("--dir") ?? c.InstallDir;
+            c.DataDir = Arg("--data") ?? c.DataDir;
+            if (int.TryParse(Arg("--port"), out var port)) c.Port = port;
+            if (Has("--network")) c.Network = true;
+            if (Has("--no-desktop")) c.DesktopShortcut = false;
+            if (Has("--no-startmenu")) c.StartMenu = false;
+            if (Has("--autostart")) c.Autostart = true;
+            if (Has("--no-helper")) c.Helper = false;
+            if (Has("--no-bridge")) c.Bridge = false;
+            c.Language = L.Lang = Arg("--lang") ?? c.Language;
+            return c;
         }
     }
 }
