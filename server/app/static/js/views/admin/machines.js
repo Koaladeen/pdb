@@ -17,7 +17,7 @@ export async function render(root) {
         { label: "Name", value: (m) => m.name },
         { label: "Mastercam-Ordner", value: (m) => h("code", {}, m.mcam_folder) },
         { label: "NC-Ordner", value: (m) => h("code", {}, m.nc_folder) },
-        { label: "NC-Dateiname", value: (m) => (m.nc_naming === "nc" ? `NC-Nummer${m.nc_extension}` : `MDM-Nummer${m.nc_extension}`) },
+        { label: "NC-Dateiname", value: (m) => (m.nc_naming === "nc" ? `NC-Nummer${m.nc_extension}` : `PDB-Nummer${m.nc_extension}`) },
         { label: "Maschinendefinition", value: (m) => (m.machine_definition ? h("code", { title: m.machine_definition }, m.machine_definition.split("\\").pop()) : "") },
         { label: "Letzte NC-Nr.", class: "num", value: (m) => String(m.nc_counter) },
         { label: "Status", value: (m) => (m.active ? badge("aktiv", "ok") : badge("inaktiv", "bad")) },
@@ -36,7 +36,7 @@ function machineDialog(m, settings, reload) {
     mcam_folder: h("input", { value: m?.mcam_folder ?? "", placeholder: "DMU50" }),
     nc_folder: h("input", { value: m?.nc_folder ?? "", placeholder: "DMU50_NC" }),
     nc_naming: h("select", {},
-      h("option", { value: "mdm", selected: m?.nc_naming !== "nc" }, "MDM-Nummer (z. B. 00084197.H)"),
+      h("option", { value: "mdm", selected: m?.nc_naming !== "nc" }, "PDB-Nummer (z. B. 00084197.H)"),
       h("option", { value: "nc", selected: m?.nc_naming === "nc" }, "NC-Programmnummer (FANUC, z. B. 1101.NC)")),
     nc_extension: h("input", { value: m?.nc_extension ?? ".H" }),
     nc_number_max: h("input", { type: "number", min: "1", value: m?.nc_number_max ?? "" }),
@@ -50,7 +50,7 @@ function machineDialog(m, settings, reload) {
   const preview = h("div", { class: "paths muted wide" });
   const updatePreview = () => {
     preview.replaceChildren(
-      h("div", {}, `${settings.mcam_root}\\${inputs.mcam_folder.value || "…"}\\MDM84197\\00084197.mcam`),
+      h("div", {}, `${settings.mcam_root}\\${inputs.mcam_folder.value || "…"}\\${settings.folder_prefix ?? "PDB"}84197\\00084197.mcam`),
       h("div", {}, `${settings.nc_root}\\${inputs.nc_folder.value || "…"}\\${inputs.nc_naming.value === "nc" ? "1101" : "00084197"}${inputs.nc_extension.value}`),
     );
   };

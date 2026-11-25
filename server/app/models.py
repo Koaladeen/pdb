@@ -104,7 +104,7 @@ class MachineRight(Base):
 
 class Counter(Base):
     """Number sequences. `value` is the last number handed out; the next one is value + 1.
-    Names: "mdm" for the MDM number, "nc:<machine id>" for each machine's NC program number."""
+    Names: "mdm" for the PDB number (historic name), "nc:<machine id>" for each machine's NC program number."""
 
     __tablename__ = "counters"
     name: Mapped[str] = mapped_column(String(50), primary_key=True)
@@ -148,7 +148,7 @@ class FieldDefinition(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     # System fields are stored as table columns and cannot be disabled or deleted.
     system: Mapped[bool] = mapped_column(Boolean, default=False)
-    # Name used in NC headers, e.g. "MDM_Partname" for #MDM_Partname.
+    # Name used in NC headers, e.g. "PDB_Partname" for #PDB_Partname.
     placeholder: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # False = deleted custom field; values stay in the data but the field is gone everywhere.
     active: Mapped[bool] = mapped_column(Boolean, default=True)

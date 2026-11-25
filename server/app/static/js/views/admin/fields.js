@@ -69,7 +69,7 @@ function fieldDialog(fd, reload) {
   const key = h("input", { id: "fd-key", value: fd?.key ?? "", disabled: !isNew, placeholder: "z. B. oberflaeche" });
   const type = h("select", { id: "fd-type", disabled: fd?.system }, Object.entries(TYPES).map(([k, v]) => h("option", { value: k, selected: (fd?.type ?? "text") === k }, v)));
   const order = h("input", { id: "fd-order", type: "number", value: fd?.sort_order ?? 1000 });
-  const placeholder = h("input", { id: "fd-ph", value: fd?.placeholder ?? "", placeholder: "z. B. MDM_Customer" });
+  const placeholder = h("input", { id: "fd-ph", value: fd?.placeholder ?? "", placeholder: "z. B. PDB_Customer" });
   if (isNew) {
     label.addEventListener("input", () => {
       key.value = label.value.toLowerCase()

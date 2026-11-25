@@ -59,6 +59,22 @@ public class NcHeaderTests
     }
 
     [Fact]
+    public void Uses_the_placeholder_prefix_of_the_server()
+    {
+        var values = new Dictionary<string, string> { ["#PDB_FN"] = "00001001", ["#PDB_Partname"] = "Flat Grid" };
+        var export = new NcExportResult(new(), "1101", values, "", PlaceholderPrefix: "PDB_");
+        const string posted = "BEGIN PGM #PDB_FN MM\r\n; #PDB_Partname #PDB_Customer O#PDB_PGM\r\n";
+        Assert.True(NcHeader.HasPlaceholders(posted)); // recognised before the server is asked
+        var filled = NcHeader.Fill(posted, NcHeader.AllValues(export));
+        Assert.Equal("BEGIN PGM 00001001 MM\r\n; Flat Grid #PDB_Customer O1101\r\n", filled);
+        Assert.Equal(new[] { "#PDB_Customer" }, NcHeader.Unknown(filled, NcHeader.PrefixOf(export)));
+        Assert.False(NcHeader.HasPlaceholders("O1101 (#100=5)")); // FANUC variables are no placeholders
+
+        NcHeader.Remember("XY_"); // custom prefix reported by the server
+        Assert.True(NcHeader.HasPlaceholders("; #XY_FN"));
+    }
+
+    [Fact]
     public void Keeps_bytes_of_the_real_sample_file()
     {
         var sample = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, @"..\..\..\..\..\00091303-Autofill upon export.nc"));

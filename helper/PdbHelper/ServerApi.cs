@@ -22,7 +22,8 @@ public sealed record OperationInfo(
     LockInfo? Lock,
     string? PictureAt = null,
     string? MachineDefinition = null,
-    string? ImportSource = null)
+    string? ImportSource = null,
+    string? PlaceholderPrefix = null)
 {
     public string PartName => Article.Data.TryGetValue("teilename", out var v) && v.ValueKind == JsonValueKind.String ? v.GetString()! : "";
 }
@@ -36,7 +37,8 @@ public sealed record MachineChangeResult(
     string? MachineDefinition);
 public sealed record CheckoutResult(bool Locked, LockInfo Lock, Dictionary<string, string> Paths, int CurrentRevision);
 public sealed record CheckinResult(int Revision, string ArchivePath, bool Locked, Dictionary<string, string> Paths);
-public sealed record NcExportResult(Dictionary<string, string> Paths, string ProgramName, Dictionary<string, string> HeaderValues, string InfoFileText);
+public sealed record NcExportResult(Dictionary<string, string> Paths, string ProgramName, Dictionary<string, string> HeaderValues, string InfoFileText,
+    string? PlaceholderPrefix = null);
 public sealed record UserInfo(int Id, string Username, string DisplayName, string Role);
 public sealed record LoginUser(int Id, string Username, string DisplayName, bool HasPassword)
 {

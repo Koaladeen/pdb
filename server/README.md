@@ -51,23 +51,23 @@ over) - sample data on `http://127.0.0.1:8000`, admin password `devadmin` or `$P
 ## Taking over existing files
 
 - **Any Mastercam files**: web UI, Admin → Import (`routers/file_import.py`). Files are listed in the
-  browser (nothing uploaded), grouped into cards, get new MDM numbers and are copied into their
+  browser (nothing uploaded), grouped into cards, get new PDB numbers and are copied into their
   operation folders - by the server if it reaches the path, else by the PDB Helper on first open.
   The originals are never changed.
-- **An existing MDM folder structure** (`MDM<nr>` folders with posted `.nc`): `scripts/import_folders.py`.
-  It runs on a Windows PC that sees the share. For every `MDM<nr>` folder it reads the posted `.nc`
+- **An existing structure of numbered operation folders** (`<prefix><nr>` folders with posted `.nc`): `scripts/import_folders.py`.
+  It runs on a Windows PC that sees the share. For every `<prefix><nr>` folder it reads the posted `.nc`
   header (DB-NR, TEILENAME, ZCH-NR, OP-NAME, PROGRAMMIERER), groups operations into parts by drawing
   number + part name, matches the programmer to a PDB user by display name (else the name goes into
   the comment) and uploads `Pic<nr>.png.cam` (else `.png`). Folders without a posted `.nc` become
-  "Unbekannt (MDM<nr>)" parts. Machines are matched by their Mastercam folder. Keeps the existing
-  MDM numbers.
+  "Unbekannt (<prefix><nr>)" parts. Machines are matched by their Mastercam folder. Keeps the existing
+  numbers; the prefix is the server's folder name setting or `--prefix`.
 
 ```powershell
 server\.venv\Scripts\python server\scripts\import_folders.py --server http://pdb-server:8000 --user admin
 server\.venv\Scripts\python server\scripts\import_folders.py --server http://pdb-server:8000 --user admin --machine DMU50 --apply
 ```
 
-Dry run unless `--apply`; asks for the password; existing MDM numbers are skipped (safe to repeat).
+Dry run unless `--apply`; asks for the password; existing numbers are skipped (safe to repeat).
 
 ## Web UI structure
 
@@ -91,10 +91,21 @@ Curl smoke test against a running server with a fresh database: `bash scripts/sm
 
 An empty database gets the built-in user **admin / admin** (or `PDB_ADMIN_PASSWORD`). Its first
 login opens the **setup wizard**: company name, admin name and a new password (the default one is
-refused), Mastercam and NC main folders, fields (presets or one by one), machines, and where MDM
+refused), Mastercam and NC main folders, fields (presets or one by one), machines, and where the
 numbering starts (`GET /setup/status`, `POST /setup`, admin only, once). Any admin still on the
 default password is made to change it at login. Change it right away on a server in the network:
 until then anyone who knows the default can log in.
+
+## Naming (admin settings → Benennung)
+
+| Setting | New installation | Meaning |
+| --- | --- | --- |
+| `folder_prefix` | `PDB` | Operation folder `<prefix><number>`, e.g. `PDB1001` |
+| `placeholder_prefix` | `PDB_` | NC header placeholders `#<prefix>FN`, `#<prefix>Partname`, `#<prefix>PGM`, ... |
+| `info_file_extension` | empty | Info file next to the exported program, e.g. `.INF`; empty = none |
+
+An installation that already had operations when these settings were introduced keeps the names its
+folders and post processors use. Changing them later does not rename existing folders.
 
 ## Settings (environment variables)
 
@@ -114,8 +125,8 @@ e.g. `mcam_root` = `M:\CAM\Machines`, `nc_root` = `H:\NC`; counters start at 0.
 
 - **Part card (`articles`)**: card fields (Teilename, Zeichnungsnummer, Kunde, ...).
 - **Operation (`operations`)**: one process data row = one Mastercam file = one NC program.
-  Has its own MDM number, op number, machine and (optional) NC program number.
-- **Fields**: system fields (MDM-Nr., Nr., NC-Programmnummer, Maschine) are columns and
+  Has its own PDB number, op number, machine and (optional) NC program number.
+- **Fields**: system fields (PDB-Nr., Nr., NC-Programmnummer, Maschine) are columns and
   cannot be disabled. All other fields are rows in `field_definitions`; admins enable/disable,
   rename, reorder, mark required/searchable and add new ones. Values live in a JSON column, so
   no schema change is needed.
@@ -128,13 +139,13 @@ e.g. `mcam_root` = `M:\CAM\Machines`, `nc_root` = `H:\NC`; counters start at 0.
 
 | Key | Example |
 | --- | --- |
-| folder | `M:\CAM\Machines\DMU50\MDM84197` |
-| mcam | `...\MDM84197\00084197.mcam` |
+| folder | `M:\CAM\Machines\DMU50\PDB84197` |
+| mcam | `...\PDB84197\00084197.mcam` |
 | nc_posted / nc_old | `...\00084197.nc` / `...\00084197-old.nc` |
-| next_archive | `...\MDM84197\Revisionen\00084197_r0003.mcam` |
+| next_archive | `...\PDB84197\Revisionen\00084197_r0003.mcam` |
 | nc_export (naming `mdm`) | `H:\NC\DMU50\00084197.H` |
 | nc_export (naming `nc`, FANUC) | `H:\NC\HAAS_VF2\1101.NC` |
-| nc_info | same name with `.MDM` |
+| nc_info | same name with the info file extension (only if set) |
 
 ## Helper workflow
 
@@ -146,14 +157,13 @@ e.g. `mcam_root` = `M:\CAM\Machines`, `nc_root` = `H:\NC`; counters start at 0.
    `POST /operations/{id}/checkin {revision: current+1, comment}`. `keep_lock: true` to keep working.
 6. Close without saving: `POST /operations/{id}/release`.
 7. NC export: `POST /operations/{id}/nc-export` → refused if status is "Gesperrt"; returns
-   paths, header placeholder values (`#MDM_FN`, ...) and the `.MDM` info file text.
+   paths, header placeholder values (`#PDB_FN`, ...) and the optional info file text.
 8. Machine change: `POST /operations/{id}/machine` → old and new paths; the helper moves the folder.
 9. Imported file not copied yet (`import_source` in the operation): the helper copies it into
    `paths.mcam` on first open and reports `POST /operations/{id}/import-copied`.
 
 ## Not done yet
 
-- Numeric first line of the `.MDM` info file (checksum?) is not written; meaning unknown.
 - Header template per machine is stored but not used; the post already writes the placeholders.
 - Windows login (single sign-on); backups to another device.
 - Postgres is supported by SQLAlchemy but not tested yet.

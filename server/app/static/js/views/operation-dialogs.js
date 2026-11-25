@@ -79,7 +79,7 @@ export async function operationDialog(id, reload) {
   tabs.forEach(([label], i) => tabBar.append(h("button", { type: "button", onclick: () => show(i) }, label)));
   body.append(
     h("div", { class: "row", style: { marginBottom: "12px" } },
-      badge(`MDM ${op.mdm_number_text}`),
+      badge(`PDB-Nr. ${op.mdm_number_text}`),
       badge(op.machine),
       op.nc_number != null ? badge(`NC ${op.nc_number}`) : null,
       badge(`Version ${op.current_revision}`),
@@ -304,6 +304,6 @@ async function breakLock(op) {
 }
 
 async function deleteOperation(op) {
-  const ok = await confirmDialog("Operation löschen", `MDM ${op.mdm_number_text} aus der Datenbank löschen? Die Dateien auf dem Laufwerk bleiben erhalten.`, "Löschen", true);
+  const ok = await confirmDialog("Operation löschen", `PDB-Nr. ${op.mdm_number_text} aus der Datenbank löschen? Die Dateien auf dem Laufwerk bleiben erhalten.`, "Löschen", true);
   return ok && attempt(() => api.del(`/operations/${op.id}`), "Gelöscht");
 }

@@ -1,7 +1,7 @@
 // Admin: take over existing Mastercam files. 1) pick files (folder in the browser - only names,
 // sizes and dates are read, nothing is uploaded - or paste a list of paths), 2) group them into
 // cards (suggestions by folder / file name, then freely: new cards, existing cards, order,
-// machine, title per file), 3) import: every file becomes an operation with a new MDM number and
+// machine, title per file), 3) import: every file becomes an operation with a new PDB number and
 // is copied into its operation folder (by the server if it can reach it, otherwise by the PDB
 // Helper on first open). The original files are never changed.
 import { api, qs } from "../../api.js";
@@ -209,7 +209,7 @@ export async function render(root) {
   const step1 = () => h("div", { class: "panel" },
     h("div", { class: "panel-title" }, "1. Dateien wählen"),
     h("div", { class: "panel-body" },
-      h("p", { class: "muted" }, "Nur Namen, Grösse und Datum werden gelesen – es wird nichts hochgeladen. Die Originale bleiben unverändert; PDB kopiert jede Datei in ihren eigenen MDM-Ordner."),
+      h("p", { class: "muted" }, "Nur Namen, Grösse und Datum werden gelesen – es wird nichts hochgeladen. Die Originale bleiben unverändert; PDB kopiert jede Datei in ihren eigenen Operationsordner."),
       h("div", { class: "row" },
         h("button", { type: "button", class: "primary", onclick: () => folderInput.click() }, "Ordner wählen …"),
         h("button", { type: "button", onclick: () => fileInput.click() }, "Einzelne Dateien …"),
@@ -278,7 +278,7 @@ export async function render(root) {
               visible.length ? visible.slice(0, 500).map(fileRow) : h("p", { class: "muted" }, st.files.length ? "Alle Dateien sind Karten zugeordnet." : "Noch keine Dateien gewählt."),
               visible.length > 500 ? h("p", { class: "muted" }, `… und ${visible.length - 500} weitere (Filter benutzen)`) : null),
             known.length ? h("details", { class: "section" }, h("summary", {}, `Schon importiert (${known.length}) – werden übersprungen`),
-              known.slice(0, 200).map((f) => h("div", { class: "muted" }, `${f.name} → MDM ${f.known.mdm_number}`))) : null),
+              known.slice(0, 200).map((f) => h("div", { class: "muted" }, `${f.name} → PDB-Nr. ${f.known.mdm_number}`))) : null),
           // right: cards
           h("div", { class: "import-col" },
             h("div", { class: "import-col-head" }, h("strong", {}, `Karten (${st.cards.length})`)),
@@ -315,7 +315,7 @@ export async function render(root) {
     return h("div", { class: "panel" },
       h("div", { class: "panel-title" }, "3. Importieren"),
       h("div", { class: "panel-body" },
-        h("p", {}, `${st.cards.length} Karten (${st.cards.length - existing} neu, ${existing} bestehend) · ${files} Dateien → ${files} Operationen mit neuen MDM-Nummern`),
+        h("p", {}, `${st.cards.length} Karten (${st.cards.length - existing} neu, ${existing} bestehend) · ${files} Dateien → ${files} Operationen mit neuen PDB-Nummern`),
         h("label", { class: "check" }, h("input", { type: "checkbox", checked: st.copyNow, onchange: (e) => { st.copyNow = e.target.checked; } }),
           "Dateien gleich kopieren, wenn der Server sie erreicht (sonst kopiert der PDB Helper beim ersten Öffnen)"),
         h("div", { class: "row section" }, h("span", { class: "spacer" }),
@@ -329,7 +329,7 @@ export async function render(root) {
       h("div", { class: "panel-body" },
         h("p", {}, `${r.imported} Dateien importiert · ${r.copied} schon kopiert · ${r.pending} kopiert der PDB Helper beim ersten Öffnen${r.skipped ? ` · ${r.skipped} übersprungen (schon importiert)` : ""}`),
         h("ul", {}, r.cards.map((c, i) => h("li", {}, h("a", { href: `#/article/${c.article_id}` }, r.labels[i] || `Karte ${c.article_id}`),
-          ` – ${c.operations.filter((o) => !o.skipped).map((o) => `MDM ${o.mdm_number}`).join(", ") || "nichts Neues"}`))),
+          ` – ${c.operations.filter((o) => !o.skipped).map((o) => `PDB-Nr. ${o.mdm_number}`).join(", ") || "nichts Neues"}`))),
         h("div", { class: "row section" }, h("span", { class: "spacer" }), h("button", { type: "button", onclick: () => { st.result = null; draw(); } }, "Weitere Dateien importieren"))));
   };
 

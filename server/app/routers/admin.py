@@ -459,6 +459,10 @@ class SettingsIn(BaseModel):
     nc_root: str | None = None
     archive_subfolder: str | None = None
     company_name: str | None = Field(default=None, max_length=200)
+    # naming of operation folders, NC header placeholders and the info file (see seed.NAMING_*)
+    folder_prefix: str | None = Field(default=None, max_length=20, pattern=r"^[A-Za-z0-9_-]*$")
+    placeholder_prefix: str | None = Field(default=None, min_length=1, max_length=20, pattern=r"^[A-Za-z0-9_]+$")
+    info_file_extension: str | None = Field(default=None, max_length=10, pattern=r"^(\.[A-Za-z0-9]{1,9})?$")
 
 
 class CounterIn(BaseModel):
@@ -494,7 +498,7 @@ def get_counters(s: Session = Depends(get_db), _=Depends(require_admin)):
 
 @router.put("/counters/{name}")
 def set_counter(name: str, body: CounterIn, s: Session = Depends(get_db), admin: User = Depends(require_admin)):
-    """Set the last used number, e.g. to MDM's highest number so new ones never clash.
+    """Set the last used number, e.g. to the highest number of a previous system so new ones never clash.
     Lowering it is allowed; numbers already in use are skipped when handing out."""
     c = s.get(Counter, name) or _404("Counter")
     c.value = body.value

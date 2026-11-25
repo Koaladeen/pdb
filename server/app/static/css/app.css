@@ -508,3 +508,23 @@ button.icon { padding: 2px 7px; min-width: 0; }
 .import-pick { display: grid; gap: 4px; margin-top: 8px; max-height: 50vh; overflow: auto; }
 .import-pick-row { display: flex; justify-content: space-between; gap: 12px; text-align: left; }
 .import-pending .panel-body { gap: 10px; flex-wrap: wrap; }
+
+/* card page blocks, arranged per user (layout.js) */
+.block-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.block { min-width: 0; }
+.block.span-2 { grid-column: span 2; }
+.block.span-3 { grid-column: span 3; }
+.block.span-4 { grid-column: span 4; }
+.block.span-6 { grid-column: span 6; }
+@media (max-width: 900px) { .block-grid .block { grid-column: span 6; } }
+.block-grid.editing .block { outline: 2px dashed var(--brand); outline-offset: 3px; border-radius: var(--radius); cursor: grab; }
+.block-grid.editing .block > :not(.block-tools) { pointer-events: none; }
+.block-grid.editing .block.is-hidden > :not(.block-tools) { opacity: 0.3; }
+.block-grid .block.dragging { opacity: 0.5; }
+.block-grid .block.drop-before { box-shadow: -6px 0 0 -2px var(--brand); }
+.block-grid .block.drop-after { box-shadow: 6px 0 0 -2px var(--brand); }
+.block-tools { display: flex; gap: 6px; align-items: center; padding: 4px 8px; margin-bottom: 6px; background: var(--brand-soft); border-radius: var(--radius); }
+.block-tools select { width: auto; }
+.block-handle { font-size: 16px; color: var(--brand); cursor: grab; }
+.layout-edit-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.block .card-preview img { max-width: 100%; }

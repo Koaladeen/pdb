@@ -3,20 +3,38 @@ using System.Text.RegularExpressions;
 
 namespace PdbHelper;
 
-/// <summary>Fills the #MDM_ placeholders the post writes into the NC header. Pure text work,
-/// kept separate so it can be tested without files or a server.</summary>
+/// <summary>Fills the placeholders the post writes into the NC header (#&lt;prefix&gt;..., the prefix
+/// comes from the server, e.g. "PDB_"). Pure text work, kept separate so it can be tested without
+/// files or a server.</summary>
 public static partial class NcHeader
 {
     /// <summary>NC files are plain ASCII/ANSI; Latin-1 keeps every byte as it is.</summary>
     public static readonly Encoding FileEncoding = Encoding.Latin1;
 
-    [GeneratedRegex(@"#MDM_[A-Za-z0-9_]+")]
-    private static partial Regex PlaceholderRegex();
+    /// <summary>Servers before the prefix setting always used this one.</summary>
+    public const string DefaultPrefix = "MDM_";
 
-    public static bool HasPlaceholders(string text) => PlaceholderRegex().IsMatch(text);
+    /// <summary>Prefixes to look for in a freshly posted file - before the server is asked. The
+    /// usual ones plus whatever the server reported for an opened operation (Sessions).</summary>
+    public static readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> KnownPrefixes = new()
+    {
+        [DefaultPrefix] = true,
+        ["PDB_"] = true,
+    };
 
-    /// <summary>Replaces every known placeholder. Longest names first, so "#MDM_FN" never
-    /// eats the start of a longer name like "#MDM_FNX".</summary>
+    public static void Remember(string? prefix)
+    {
+        if (!string.IsNullOrEmpty(prefix)) KnownPrefixes[prefix!] = true;
+    }
+
+    static Regex PlaceholderRegex(string prefix) => new("#" + Regex.Escape(prefix) + "[A-Za-z0-9_]+");
+
+    public static bool HasPlaceholders(string text, string prefix) => PlaceholderRegex(prefix).IsMatch(text);
+
+    public static bool HasPlaceholders(string text) => KnownPrefixes.Keys.Any(p => HasPlaceholders(text, p));
+
+    /// <summary>Replaces every known placeholder. Longest names first, so "#PDB_FN" never
+    /// eats the start of a longer name like "#PDB_FNX".</summary>
     public static string Fill(string text, IReadOnlyDictionary<string, string> values)
     {
         foreach (var (key, value) in values.OrderByDescending(kv => kv.Key.Length))
@@ -24,16 +42,18 @@ public static partial class NcHeader
         return text;
     }
 
-    public static IReadOnlyList<string> Unknown(string text) =>
-        PlaceholderRegex().Matches(text).Select(m => m.Value).Distinct().ToList();
+    public static IReadOnlyList<string> Unknown(string text, string prefix = DefaultPrefix) =>
+        PlaceholderRegex(prefix).Matches(text).Select(m => m.Value).Distinct().ToList();
+
+    public static string PrefixOf(NcExportResult export) => string.IsNullOrEmpty(export.PlaceholderPrefix) ? DefaultPrefix : export.PlaceholderPrefix;
 
     /// <summary>Values from the server plus the ones only the helper knows.</summary>
     public static Dictionary<string, string> AllValues(NcExportResult export) =>
-        new(export.HeaderValues) { ["#MDM_PGM"] = export.ProgramName };
+        new(export.HeaderValues) { [$"#{PrefixOf(export)}PGM"] = export.ProgramName };
 }
 
 /// <summary>Turns a freshly posted NC file into the finished program on the machine share,
-/// the same steps MDM does on export.</summary>
+/// the usual steps of an NC export.</summary>
 public sealed class NcExportService(ServerApi api)
 {
     public sealed record Outcome(bool Done, string Message);
@@ -58,7 +78,7 @@ public sealed class NcExportService(ServerApi api)
         var filled = NcHeader.Fill(text, NcHeader.AllValues(export));
         var target = export.Paths["nc_export"];
         var oldPath = export.Paths["nc_old"];
-        var infoPath = export.Paths["nc_info"];
+        export.Paths.TryGetValue("nc_info", out var infoPath); // optional (admin setting)
 
         // 1. previous program on the machine share becomes -old.nc next to the part
         if (File.Exists(target)) File.Copy(target, oldPath, overwrite: true);
@@ -66,9 +86,10 @@ public sealed class NcExportService(ServerApi api)
         FileOps.WriteAtomic(postedPath, NcHeader.FileEncoding.GetBytes(filled));
         // 3. program and info file to the machine share
         FileOps.WriteAtomic(target, NcHeader.FileEncoding.GetBytes(filled));
-        FileOps.WriteAtomic(infoPath, NcHeader.FileEncoding.GetBytes(export.InfoFileText));
+        if (!string.IsNullOrEmpty(infoPath) && export.InfoFileText.Length > 0)
+            FileOps.WriteAtomic(infoPath, NcHeader.FileEncoding.GetBytes(export.InfoFileText));
 
-        var unknown = NcHeader.Unknown(filled);
+        var unknown = NcHeader.Unknown(filled, NcHeader.PrefixOf(export));
         var warning = unknown.Count > 0 ? $" Unbekannte Platzhalter: {string.Join(", ", unknown)}" : "";
         Log.Write($"NC export op {operationId}: {target}{warning}");
         return new(true, $"NC-Programm exportiert: {target}{warning}");

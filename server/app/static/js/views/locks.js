@@ -16,7 +16,7 @@ export async function render(root) {
       list,
       table({
         columns: [
-          { label: "MDM-Nr.", class: "num", value: (l) => String(l.mdm_number).padStart(8, "0") },
+          { label: "PDB-Nr.", class: "num", value: (l) => String(l.mdm_number).padStart(8, "0") },
           { label: "Teil", value: (l) => l.part },
           { label: "Maschine", value: (l) => l.machine },
           { label: "Benutzer", value: (l) => l.user },

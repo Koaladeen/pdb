@@ -9,15 +9,15 @@ the file work on this PC, so the server (Raspberry Pi) never needs access to `M:
 | Keep lock | Heartbeat to the server every 60 s while the file is open. |
 | Save | `.mcam` changes → copy to `Revisionen\<nr>_rNNNN.mcam` → check-in as next version (lock kept). |
 | Close | File name gone from all Mastercam window titles (3 checks, 5 s apart, 90 s grace after start) → last check-in if changed → lock released. |
-| NC export | Posted `<nr>.nc` with `#MDM_...` placeholders → server checks status/rights → header filled → previous export kept as `-old.nc` → copied to the machine's NC folder → `.MDM` info file written. Extra placeholder `#MDM_PGM` = program name (NC number on FANUC machines). |
+| NC export | Posted `<nr>.nc` with `#PDB_...` placeholders (prefix from the server) → server checks status/rights → header filled → previous export kept as `-old.nc` → copied to the machine's NC folder → optional info file written. Extra placeholder `#<prefix>PGM` = program name (NC number on FANUC machines). |
 
 Settings and encrypted login: `%APPDATA%\PDB\helper.json`. Log: `%APPDATA%\PDB\logs`.
 Registers `pdb://` links for the current user (HKCU) on start; "Mit Windows starten" in the menu.
 
 ## Mastercam bridge (open in the running Mastercam)
 
-Windows always starts a NEW Mastercam for a .mcam (McamVersionSelector.exe). MDM avoids that with
-its own add-in (MDM_AddIn.dll); PDB does the same with `PdbBridge` (NET-Hook, `PdbBridge/`):
+Windows always starts a NEW Mastercam for a .mcam (McamVersionSelector.exe). PDB avoids that with
+its own add-in, `PdbBridge` (NET-Hook, `PdbBridge/`):
 
 - In Mastercam it listens on the local pipe `PdbBridge-<process id>`; the helper sends
   `OPEN <path>` and the bridge calls `FileManager.Open(true, path)` in that Mastercam (asks to

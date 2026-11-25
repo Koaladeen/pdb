@@ -2,7 +2,7 @@
 
 The page lists files (from a folder picked in the browser - only names, sizes and dates, nothing is
 uploaded - or from a pasted list of paths) and lets the admin group them into cards. Each file
-becomes an operation with a new MDM number. The original is copied into the operation folder by the
+becomes an operation with a new PDB number. The original is copied into the operation folder by the
 server right away if it can reach the path (e.g. a server on the same PC), otherwise by the PDB
 Helper the first time the operation is opened. Originals are never changed or moved.
 """

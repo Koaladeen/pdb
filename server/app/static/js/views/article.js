@@ -1,9 +1,12 @@
-// Part card: card fields on top, Prozessdaten (operations) below - same layout as MDM.
+// Part card: blocks for card fields, picture and Prozessdaten (operations); each user can
+// rearrange them (layout.js).
 import { api } from "../api.js";
 import { fieldForm, fieldList, operationCell } from "../fields.js";
 import { openInMastercam } from "../helper.js";
 import { pictureImg } from "../pictures.js";
 import { closeCard, rememberCard } from "../workspace.js";
+import { blockLayout } from "../layout.js";
+import { prefs } from "../prefs.js";
 import { isAdmin, store } from "../store.js";
 import { attempt, badge, clear, confirmDialog, formatDateTime, h, modal, table } from "../ui.js";
 import { newOperationDialog, operationDialog } from "./operation-dialogs.js";
@@ -25,13 +28,13 @@ export async function render(root, id) {
   const d = article.data;
   const title = [d.zeichnungsnummer, d.teilename].filter(Boolean).join(" ♦ ") || `Artikel ${article.id}`;
 
-  // Big picture top right, like MDM: first operation with a picture; a row's thumbnail switches it.
+  // Big picture: first operation with a picture; a row's thumbnail switches it.
   const withPicture = article.operations.filter((op) => op.picture_at);
   const preview = h("figure", { class: "card-preview" });
   const showPreview = (op) => {
     clear(preview,
       op ? pictureImg(op) : h("div", { class: "no-picture muted" }, "Kein Bild"),
-      op ? h("figcaption", { class: "muted" }, `${op.data.prozessbeschreibung || `Nr. ${op.op_number}`} · MDM ${op.mdm_number_text}`) : null);
+      op ? h("figcaption", { class: "muted" }, `${op.data.prozessbeschreibung || `Nr. ${op.op_number}`} · PDB-Nr. ${op.mdm_number_text}`) : null);
   };
   showPreview(withPicture[0]);
 
@@ -62,6 +65,35 @@ export async function render(root, id) {
     },
   ];
 
+  // Blocks of the card page; each user can rearrange them ("Layout anpassen", saved per user).
+  const blocks = [
+    {
+      id: "fields",
+      title: "Kartenfelder",
+      span: 4,
+      el: h("div", { class: "panel" },
+        h("div", { class: "panel-body" }, h("div", { class: "card-fields" }, fieldList("article", d))),
+        h("div", { class: "panel-body muted", style: { paddingTop: 0, fontSize: "12px" } },
+          `Angelegt ${formatDateTime(article.created_at)} · geändert ${formatDateTime(article.updated_at)}`)),
+    },
+    prefs().pictures ? { id: "picture", title: "Bild", span: 2, el: h("div", { class: "panel" }, h("div", { class: "panel-body" }, preview)) } : null,
+    {
+      id: "operations",
+      title: "Prozessdaten",
+      span: 6,
+      el: h("div", { class: "panel" },
+        h("div", { class: "panel-title" }, "Prozessdaten",
+          h("button", { class: "small", onclick: () => newOperationDialog(article, reload) }, "+ Neue Operation")),
+        table({
+          columns: opColumns,
+          rows: article.operations,
+          onRowClick: (op) => operationDialog(op.id, reload),
+          empty: "Noch keine Operationen",
+        })),
+    },
+  ].filter(Boolean);
+  const layout = blockLayout("article", blocks);
+
   clear(
     root,
     h(
@@ -72,31 +104,14 @@ export async function render(root, id) {
         "div",
         { class: "row" },
         h("button", { onclick: () => editArticle(article, reload) }, "Bearbeiten"),
+        layout.button,
         isAdmin() && article.operations.length === 0
           ? h("button", { class: "danger", onclick: () => deleteArticle(article) }, "Löschen")
           : null,
         h("button", { title: "Karte schließen", onclick: () => closeCard(article.id) }, "Schließen"),
       ),
     ),
-    h(
-      "div",
-      { class: "panel" },
-      h("div", { class: "panel-body card-top" }, h("div", { class: "card-fields" }, fieldList("article", d)), preview),
-      h("div", { class: "panel-body muted", style: { paddingTop: 0, fontSize: "12px" } },
-        `Angelegt ${formatDateTime(article.created_at)} · geändert ${formatDateTime(article.updated_at)}`),
-    ),
-    h(
-      "div",
-      { class: "panel section" },
-      h("div", { class: "panel-title" }, "Prozessdaten",
-        h("button", { class: "small", onclick: () => newOperationDialog(article, reload) }, "+ Neue Operation")),
-      table({
-        columns: opColumns,
-        rows: article.operations,
-        onRowClick: (op) => operationDialog(op.id, reload),
-        empty: "Noch keine Operationen",
-      }),
-    ),
+    layout.el,
   );
 }
 

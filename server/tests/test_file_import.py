@@ -1,4 +1,4 @@
-"""Import of existing Mastercam files: grouping into cards, MDM numbers, copying, no duplicates."""
+"""Import of existing Mastercam files: grouping into cards, PDB numbers, copying, no duplicates."""
 from tests.conftest import login
 
 

@@ -48,7 +48,7 @@ export async function showPreview(el, id, { onOpen, onClose, onPin }) {
       op.picture_at ? h("span", { class: "thumb" }, pictureImg(op)) : h("span", { class: "thumb empty-thumb" }),
       h("div", { class: "pv-op-text" },
         h("div", { class: "pv-op-title" }, opFields.filter((fd) => fd.key !== "mdm_number" && fd.key !== "machine_id").map((fd) => operationCell(fd, op)).join(" · ")),
-        h("div", { class: "muted" }, `${op.machine} · MDM ${op.mdm_number_text}`)),
+        h("div", { class: "muted" }, `${op.machine} · PDB-Nr. ${op.mdm_number_text}`)),
       op.lock ? badge("🔒", op.lock.stale ? "warn" : "") : null));
 
   // three columns when there is room (picture | data | operations), stacked otherwise

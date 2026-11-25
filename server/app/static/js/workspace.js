@@ -1,4 +1,4 @@
-// Open part cards in the sidebar, like MDM: switch between cards without searching again.
+// Open part cards in the sidebar: switch between cards without searching again.
 import { load, save } from "./storage.js";
 import { customerName } from "./store.js";
 import { clear, h } from "./ui.js";

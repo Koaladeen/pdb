@@ -1,4 +1,4 @@
-"""PDB server: file management for Mastercam files (MDM replacement).
+"""PDB server: file management for Mastercam files.
 
 Run:  uvicorn app.main:app --host 0.0.0.0 --port 8000
 API docs at http://<server>:8000/docs

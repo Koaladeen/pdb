@@ -2,7 +2,7 @@ PDB - Mastercam programų failų valdymas
 =======================================
 
 PDB tvarko jūsų Mastercam programas: kiekvienai detalei kortelė su operacijomis, kiekviena
-operacija su savo MDM numeriu ir aplanku, failų užraktai redaguojant, versijos, NC eksportas,
+operacija su savo PDB numeriu ir aplanku, failų užraktai redaguojant, versijos, NC eksportas,
 staklių keitimas. Sąsaja: vokiečių, anglų, italų ir lietuvių kalbomis. Šis paketas paleidžia
 PDB jūsų kompiuteryje su jūsų pačių duomenų baze – serverio ir administratoriaus teisių nereikia.
 
@@ -23,7 +23,7 @@ KASDIEN
 ESAMI MASTERCAM FAILAI
 Administratorius -> „Importas“: pasirinkite aplanką, nurodykite jo vietą (pvz.
 C:\Users\jūs\Documents\Senos programos), sugrupuokite failus į korteles ir importuokite. Kiekvienas
-failas gauna MDM numerį ir yra NUKOPIJUOJAMAS į savo PDB aplanką; originalai nekeičiami.
+failas gauna PDB numerį ir yra NUKOPIJUOJAMAS į savo PDB aplanką; originalai nekeičiami.
 
 FAILŲ ATIDARYMAS MASTERCAM (PDB Helper)
 Start-PDB paleidžia ir PDB Helper (piktograma prie laikrodžio). Vieną kartą (Mastercam 2025+):

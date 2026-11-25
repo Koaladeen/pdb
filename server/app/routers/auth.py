@@ -102,6 +102,17 @@ class Preferences(BaseModel):
     start: Literal["search", "last"] = "search"
     motion: Literal["off", "subtle", "fancy"] = "subtle"
     language: Literal["auto", "de", "en", "it", "lt"] = "auto"
+    # own arrangement of a page's blocks, e.g. {"article": [{"id": "operations", "span": 6, "hidden": false}, ...]}
+    layouts: dict[str, list["LayoutBlock"]] = Field(default={}, max_length=10)
+
+
+class LayoutBlock(BaseModel):
+    id: str = Field(min_length=1, max_length=40, pattern=r"^[a-z0-9_-]+$")
+    span: Literal[2, 3, 4, 6] = 6  # of 6 columns: third, half, two thirds, full width
+    hidden: bool = False
+
+
+Preferences.model_rebuild()
 
 
 def _preferences(s: Session, user_id: int) -> dict:

@@ -1,7 +1,7 @@
 # PDB – file management for Mastercam programs
 
 PDB keeps CNC programming organised: a **card per part** with its **operations**, every operation
-with its own consecutive **MDM number**, folder and Mastercam file, **locks** while someone edits a
+with its own consecutive **PDB number**, folder and Mastercam file, **locks** while someone edits a
 file, **versions** on every save, **NC export** with program header, and **machine changes** that
 move the files along. Web interface in German, English, Italian and Lithuanian.
 

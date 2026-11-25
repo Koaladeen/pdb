@@ -21,7 +21,7 @@ the setup wizard follows. Language: Mein Profil → Darstellung → Sprache.*
 - **Linux / Raspberry Pi:** `server/deploy/pi/install.sh` (systemd) oder `install-user.sh` (ohne sudo).
 
 Erste Anmeldung mit **admin / admin** → neues Passwort → **Einrichtungs-Assistent**: Firma, Administrator, Ordner, Felder,
-Maschinen, erste MDM-Nummer. Erneutes Ausführen aktualisiert das Programm; Daten bleiben.
+Maschinen, erste PDB-Nummer. Erneutes Ausführen aktualisiert das Programm; Daten bleiben.
 
 ## 2. Arbeitsplätze (IT)
 `install-workstation.ps1 -Server http://<server>:8000 [-Autostart]` als Admin, mit

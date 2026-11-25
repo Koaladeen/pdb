@@ -77,6 +77,14 @@ def test_preferences_follow_the_user(client, admin, setup):
     assert client.put("/auth/me/preferences", headers=a, json={**mine, "accent": "red"}).status_code == 422
     assert client.put("/auth/me/preferences", headers=a, json={**mine, "size": "xxl"}).status_code == 422
 
+    # own arrangement of the card page, per user
+    layout = {"article": [{"id": "operations", "span": 6, "hidden": False}, {"id": "picture", "span": 2, "hidden": True}]}
+    saved = client.put("/auth/me/preferences", headers=a, json={**mine, "layouts": layout}).json()
+    assert saved["layouts"] == layout
+    assert client.get("/auth/me/preferences", headers=setup["b"]).json()["layouts"] == {}
+    bad = {"article": [{"id": "operations", "span": 5}]}
+    assert client.put("/auth/me/preferences", headers=a, json={**mine, "layouts": bad}).status_code == 422
+
 
 def test_workspace_is_per_user_and_follows_the_user(client, setup):
     a, b = setup["a"], setup["b"]
@@ -116,10 +124,10 @@ def test_operation_numbers_and_paths(client, setup):
     assert (op2["mdm_number"], op2["op_number"], op2["nc_number"]) == (2, 20, 1)
 
     p = op1["paths"]
-    assert p["folder"] == r"M:\CAM\Machines\DMU50\MDM1"
-    assert p["mcam"] == r"M:\CAM\Machines\DMU50\MDM1\00000001.mcam"
+    assert p["folder"] == r"M:\CAM\Machines\DMU50\PDB1"
+    assert p["mcam"] == r"M:\CAM\Machines\DMU50\PDB1\00000001.mcam"
     assert p["nc_export"] == r"H:\NC\DMU50_NC\00000001.H"
-    assert p["nc_info"] == r"H:\NC\DMU50_NC\00000001.MDM"
+    assert "nc_info" not in p  # no info file unless an extension is set
     assert op2["paths"]["nc_export"] == r"H:\NC\HAAS_VF2\1.NC"
 
     card = client.get(f"/articles/{part['id']}", headers=setup["a"]).json()
@@ -166,8 +174,8 @@ def test_machine_change(client, setup):
     moved = r.json()
     assert moved["machine"] == "Haas VF-2"
     assert moved["nc_number"] == 1
-    assert moved["old_paths"]["folder"].endswith(r"DMU50\MDM1")
-    assert moved["paths"]["folder"].endswith(r"Haas_VF2\MDM1")
+    assert moved["old_paths"]["folder"].endswith(r"DMU50\PDB1")
+    assert moved["paths"]["folder"].endswith(r"Haas_VF2\PDB1")
 
 
 # ---------------------------------------------------------------- configurable fields
@@ -294,7 +302,7 @@ def test_lock_cycle(client, setup):
 
     r = client.post(f"{url}/checkout", headers=a, json={"pc_name": "PC-A"})
     assert r.status_code == 200, r.text
-    assert r.json()["paths"]["next_archive"].endswith(r"MDM1\Revisionen\00000001_r0001.mcam")
+    assert r.json()["paths"]["next_archive"].endswith(r"PDB1\Revisionen\00000001_r0001.mcam")
 
     # B is refused and told who holds it -> read-only
     r = client.post(f"{url}/checkout", headers=b, json={"pc_name": "PC-B"})
@@ -413,7 +421,7 @@ def test_import_operation(client, admin, setup):
     card = client.get(f"/articles/{first['article_id']}", headers=admin).json()
     assert [o["mdm_number"] for o in card["operations"]] == [91704, 91695]
     paths = client.get(f"/operations/{first['operation_id']}", headers=admin).json()["paths"]
-    assert paths["mcam"].endswith(r"DMU50\MDM91704\00091704.mcam")  # the existing folder
+    assert paths["mcam"].endswith(r"DMU50\PDB91704\00091704.mcam")  # the existing folder
     # new numbers from the counter skip nothing they shouldn't and never reuse an imported one
     new = make_op(client, admin, first["article_id"], setup["dmu"]["id"])
     assert new["mdm_number"] not in (91704, 91695)
@@ -452,8 +460,9 @@ def test_operation_picture(client, admin, setup):
 # ---------------------------------------------------------------- NC export
 
 
-def test_nc_export(client, setup):
+def test_nc_export(client, admin, setup):
     a = setup["a"]
+    client.put("/admin/settings", headers=admin, json={"info_file_extension": ".INF"})  # info file switched on
     me = client.get("/auth/me", headers=a).json()
     part = make_part(client, a, teilename="Flat Grid", zeichnungsnummer="NR-20431")
     op = make_op(
@@ -471,12 +480,12 @@ def test_nc_export(client, setup):
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["header_values"] == {
-        "#MDM_Partname": "Flat Grid",
-        "#MDM_DrawingNumber": "NR-20431",
-        "#MDM_FN": "00000001",
-        "#MDM_OperationTitle": "1 OP",
-        "#MDM_Programmer": "Anna Muster",
-        "#MDM_Customer": "",
+        "#PDB_Partname": "Flat Grid",
+        "#PDB_DrawingNumber": "NR-20431",
+        "#PDB_FN": "00000001",
+        "#PDB_OperationTitle": "1 OP",
+        "#PDB_Programmer": "Anna Muster",
+        "#PDB_Customer": "",
     }
     assert body["program_name"] == "00000001"
     assert "Description : NR-20431 \u2666 Flat Grid" in body["info_file_text"]

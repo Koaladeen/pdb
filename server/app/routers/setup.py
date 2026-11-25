@@ -1,6 +1,6 @@
 """First-run setup of a NEW installation. An empty database gets the built-in admin (admin /
 admin, see seed.py) and "setup_pending". The first admin login then runs this wizard: new admin
-password and name, folders, fields, machines, first MDM number. Only once; afterwards the same
+password and name, folders, fields, machines, first PDB number. Only once; afterwards the same
 things are changed in the admin screens."""
 import os
 import re

@@ -1,4 +1,4 @@
-// Search panel (like MDM's left-hand search) and result list.
+// Search panel and result list.
 import { api, qs } from "../api.js";
 import { displayValue, fieldForm } from "../fields.js";
 import { openInMastercam } from "../helper.js";
@@ -17,7 +17,7 @@ const PAGE = 50;
 function filterDefs() {
   const fixed = [
     { name: "q", label: "Freitext" },
-    { name: "mdm_number", label: "MDM-Nummer", type: "number" },
+    { name: "mdm_number", label: "PDB-Nummer", type: "number" },
     { name: "nc_number", label: "NC-Programmnummer", type: "number" },
     { name: "machine_id", label: "Maschine", type: "machine" },
   ];

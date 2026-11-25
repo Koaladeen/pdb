@@ -4,7 +4,7 @@ Rules (from the plan):
 1. Taking a lock is one INSERT against the primary key on operation_id - never read-then-write.
 2. A lock without heartbeat for PDB_LOCK_TIMEOUT_MINUTES is stale and can be taken over.
 3. The add-in saves to a temp file and renames; the server only records the revision.
-4. Locks are advisory, like MDM: the share itself is not blocked.
+4. Locks are advisory: the share itself is not blocked.
 """
 from datetime import datetime
 

@@ -66,9 +66,9 @@ export function render(root, onDone, status = {}) {
     // 2 folders
     () => [
       h("h2", {}, "Ordner"),
-      h("p", { class: "muted" }, "Pfade so, wie die Arbeitsplätze sie sehen (Netzlaufwerk oder \\\\server\\freigabe). Jede Maschine bekommt darunter einen eigenen Ordner, jede Operation darin einen Ordner MDM<Nummer>."),
+      h("p", { class: "muted" }, "Pfade so, wie die Arbeitsplätze sie sehen (Netzlaufwerk oder \\\\server\\freigabe). Jede Maschine bekommt darunter einen eigenen Ordner, jede Operation darin einen eigenen Ordner (z. B. PDB1001)."),
       field("Hauptordner für Mastercam-Dateien", bind(data.folders, "mcam_root", { placeholder: "M:\\CAM\\Maschinen" }),
-        "Beispiel: M:\\CAM\\Maschinen\\DMU50\\MDM1001\\00001001.mcam"),
+        "Beispiel: M:\\CAM\\Maschinen\\DMU50\\PDB1001\\00001001.mcam"),
       field("Hauptordner für NC-Programme (DNC)", bind(data.folders, "nc_root", { placeholder: "H:\\NC" }),
         "Beispiel: H:\\NC\\DMU50\\00001001.H – oder 1101.NC bei FANUC-Maschinen"),
     ],
@@ -93,7 +93,7 @@ export function render(root, onDone, status = {}) {
           }), f.label)));
       return [
         h("h2", {}, "Felder auf den Karten"),
-        choice("full", "Vollständig (wie MDM)", "Alle Felder: Teilename, Zeichnungs-, Artikel-, Bestell-, Auftrags- und Projektnummer, Index, Stückzahl, Kunde, Rohteil, Termine, Status; bei Operationen Programmierer, Bediener, Spannmittel, Lagerort, Zeiten …"),
+        choice("full", "Vollständig", "Alle Felder: Teilename, Zeichnungs-, Artikel-, Bestell-, Auftrags- und Projektnummer, Index, Stückzahl, Kunde, Rohteil, Termine, Status; bei Operationen Programmierer, Bediener, Spannmittel, Lagerort, Zeiten …"),
         choice("simple", "Einfach", "Nur das Wichtigste: Teilename, Zeichnungs- und Artikelnummer, Kunde, Status, Notiz; Operation, Programmierer, Status, Material, Kommentar. Weitere Felder lassen sich jederzeit einschalten."),
         data.fields === "custom" ? choice("custom", "Eigene Auswahl", "Unten einzeln gewählt.") : null,
         fieldDefs.length ? h("p", { class: "muted section" }, "Einzeln ein- und ausschalten (später unter Admin → Felder, dort auch eigene Felder anlegen):") : null,
@@ -109,7 +109,7 @@ export function render(root, onDone, status = {}) {
           h("input", { value: m.mcam_folder, placeholder: "Mastercam-Ordner", "aria-label": "Mastercam-Ordner", oninput: (e) => { m.mcam_folder = e.target.value; } }),
           h("input", { value: m.nc_folder, placeholder: "NC-Ordner", "aria-label": "NC-Ordner", oninput: (e) => { m.nc_folder = e.target.value; } }),
           h("select", { "aria-label": "NC-Dateiname", onchange: (e) => { m.nc_naming = e.target.value; } },
-            h("option", { value: "mdm", selected: m.nc_naming === "mdm" }, "MDM-Nr. (Heidenhain)"),
+            h("option", { value: "mdm", selected: m.nc_naming === "mdm" }, "PDB-Nr. (Heidenhain)"),
             h("option", { value: "nc", selected: m.nc_naming === "nc" }, "NC-Nr. (FANUC)")),
           h("input", { value: m.nc_extension, placeholder: ".H", "aria-label": "Endung", oninput: (e) => { m.nc_extension = e.target.value; } }),
           h("input", { class: "wide-input", value: m.machine_definition, placeholder: "Maschinendefinition (.mcam-mmd), optional", "aria-label": "Maschinendefinition", oninput: (e) => { m.machine_definition = e.target.value.replace(/^"(.*)"$/, "$1"); } }),
@@ -118,7 +118,7 @@ export function render(root, onDone, status = {}) {
       draw();
       return [
         h("h2", {}, "Maschinen"),
-        h("p", { class: "muted" }, "Pro Maschine: Ordnernamen unter den beiden Hauptordnern, wie NC-Dateien heissen (MDM-Nummer oder NC-Programmnummer für FANUC/O-Nummern), Dateiendung und optional die Mastercam-Maschinendefinition."),
+        h("p", { class: "muted" }, "Pro Maschine: Ordnernamen unter den beiden Hauptordnern, wie NC-Dateien heissen (PDB-Nummer oder NC-Programmnummer für FANUC/O-Nummern), Dateiendung und optional die Mastercam-Maschinendefinition."),
         list,
         h("button", {
           type: "button",
@@ -132,7 +132,7 @@ export function render(root, onDone, status = {}) {
     // 5 numbers
     () => [
       h("h2", {}, "Nummern"),
-      h("p", {}, "Jede Operation bekommt eine fortlaufende MDM-Nummer; sie benennt Ordner und NC-Dateien."),
+      h("p", {}, "Jede Operation bekommt eine fortlaufende PDB-Nummer; sie benennt Ordner und NC-Dateien."),
       h("p", { class: "muted" }, "Neu anfangen: 0 lassen (erste Nummer 1). Wer von einem anderen System umsteigt, setzt hier die höchste bisher verwendete Nummer, damit neue Programme alte auf den Maschinen nie überschreiben."),
       field("Zuletzt verwendete Nummer", bind(data, "mdm_start", { type: "number", min: "0" })),
     ],
@@ -145,7 +145,7 @@ export function render(root, onDone, status = {}) {
       h("div", { class: "kv" }, h("div", { class: "k" }, "NC-Ordner"), h("div", { class: "v" }, data.folders.nc_root)),
       h("div", { class: "kv" }, h("div", { class: "k" }, "Felder"), h("div", { class: "v" }, data.fields === "full" ? "Vollständig" : data.fields === "simple" ? "Einfach" : "Eigene Auswahl")),
       h("div", { class: "kv" }, h("div", { class: "k" }, "Maschinen"), h("div", { class: "v" }, data.machines.map((m) => m.name).join(", ") || "keine")),
-      h("div", { class: "kv" }, h("div", { class: "k" }, "Erste MDM-Nummer"), h("div", { class: "v" }, String(Number(data.mdm_start || 0) + 1))),
+      h("div", { class: "kv" }, h("div", { class: "k" }, "Erste PDB-Nummer"), h("div", { class: "v" }, String(Number(data.mdm_start || 0) + 1))),
       h("p", { class: "muted section" }, "Danach: Benutzer anlegen, auf jedem Arbeitsplatz den PDB Helper einrichten (von der IT), in Mastercam die PDB-Bridge laden."),
     ],
   ];

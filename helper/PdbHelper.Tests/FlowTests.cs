@@ -81,13 +81,14 @@ public class FlowTests
         if (Environment.GetEnvironmentVariable("PDB_FLOW_TEST") == "0") return;
         Assert.True(await ServerUp(), $"Demo server not reachable at {Server}. Start it (see server/README.md) or set PDB_FLOW_TEST=0.");
 
-        // Demo users from scripts/demo_data.py
+        // Sample users from scripts/demo_sample.py
         var (adminToken, _) = await ServerApi.Login(Server, "admin", AdminPassword);
         var (annaToken, _) = await ServerApi.Login(Server, "anna", "");
         var (tomToken, _) = await ServerApi.Login(Server, "tom", "");
 
         using var http = new HttpClient { BaseAddress = new Uri(Server + "/") };
         http.DefaultRequestHeaders.Authorization = new("Bearer", adminToken);
+        await http.PutAsJsonAsync("admin/settings", new { info_file_extension = ".INF" }); // info file is off by default
         var machines = await http.GetFromJsonAsync<JsonElement>("machines");
         var dmu = machines.EnumerateArray().First(m => m.GetProperty("mcam_folder").GetString() == "DMU50").GetProperty("id").GetInt32();
         var part = await (await http.PostAsJsonAsync("articles", new { data = new { teilename = "Helper Test", zeichnungsnummer = "HT-1" } })).Content.ReadFromJsonAsync<JsonElement>();
@@ -121,7 +122,7 @@ public class FlowTests
 
         // "post" in Mastercam -> header filled, copied to the NC folder with info file
         var posted = paths.GetProperty("nc_posted").GetString()!;
-        await File.WriteAllTextAsync(posted, "0 BEGIN PGM #MDM_FN MM\r\n1 ; TEILENAME : #MDM_Partname\r\n2 END PGM #MDM_FN MM\r\n", NcHeader.FileEncoding);
+        await File.WriteAllTextAsync(posted, "0 BEGIN PGM #PDB_FN MM\r\n1 ; TEILENAME : #PDB_Partname\r\n2 END PGM #PDB_FN MM\r\n", NcHeader.FileEncoding);
         var target = paths.GetProperty("nc_export").GetString()!;
         var exported = await Until(async () => File.Exists(target) ? await File.ReadAllTextAsync(target, NcHeader.FileEncoding) : null, "NC export");
         var num = op.GetProperty("mdm_number_text").GetString();

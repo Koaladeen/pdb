@@ -2,7 +2,7 @@ PDB - file management for Mastercam programs
 ============================================
 
 PDB keeps your Mastercam programs organised: a card per part with its operations, each
-operation with its own MDM number and folder, locks while a file is being edited, versions,
+operation with its own PDB number and folder, locks while a file is being edited, versions,
 NC export with program header, machine changes. Web interface in German, English, Italian and
 Lithuanian. This package runs PDB on your own Windows PC with your own database - no server,
 no admin rights needed.
@@ -23,7 +23,7 @@ INSTALL (once)
      use any folder, also a network drive),
    - which fields the part cards and operations should have,
    - your machines (folder names, NC file naming, extension, Mastercam machine definition),
-   - where MDM numbering starts.
+   - where the numbering starts.
 
 EVERY DAY
 - Start: shortcut "PDB" (or Start-PDB.cmd). PDB runs in the background; the shortcut opens it.
@@ -33,7 +33,7 @@ EVERY DAY
 YOUR EXISTING MASTERCAM FILES
 Log in as Administrator -> "Import". Choose a folder (only names/sizes are read), tell PDB where
 that folder is (e.g. C:\Users\you\Documents\Old programs), group the files into cards - by
-folder, by file name, or freely - and import. Every file gets an MDM number and is COPIED into
+folder, by file name, or freely - and import. Every file gets a PDB number and is COPIED into
 its PDB folder; your originals are not changed. Files imported before are skipped.
 
 OPENING FILES IN MASTERCAM (PDB Helper)

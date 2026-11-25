@@ -1,10 +1,10 @@
-"""First-start data: admin user, settings, counters and the MDM field catalogue.
+"""First-start data: admin user, settings, counters and the field catalogue.
 Runs on every start but only adds what is missing, so admin changes are never overwritten."""
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import Config
-from .models import Article, ChoiceValue, Counter, Customer, FieldDefinition, Setting, User
+from .models import Article, ChoiceValue, Counter, Customer, FieldDefinition, Operation, Setting, User
 from .security import hash_password, verify_password
 
 # Folders are set in the setup wizard (or admin settings); nothing company-specific here.
@@ -15,16 +15,22 @@ DEFAULT_SETTINGS = {
     "company_name": "",
 }
 
-# (key, label, type, flags) - flags: r=required, s=searchable, l=show in list, S=system
-# placeholder names match MDM's NC header (#MDM_...).
+# How operation folders, NC header placeholders and the info file next to an exported program are
+# named (admin settings). New installations get neutral names; one that already has operations keeps
+# the names its folders and posts were built with (e.g. taken over from another system).
+NAMING_NEW = {"folder_prefix": "PDB", "placeholder_prefix": "PDB_", "info_file_extension": ""}
+NAMING_EXISTING = {"folder_prefix": "MDM", "placeholder_prefix": "MDM_", "info_file_extension": ".MDM"}
+
+# (key, label, type, flags, placeholder) - flags: r=required, s=searchable, l=show in list, S=system.
+# Placeholder without prefix: the post writes #<placeholder_prefix><name> into the NC header.
 ARTICLE_FIELDS = [
-    ("teilename", "Teilename", "suggest", "rsl", "MDM_Partname"),
-    ("zeichnungsnummer", "Zeichnungsnummer", "suggest", "sl", "MDM_DrawingNumber"),
+    ("teilename", "Teilename", "suggest", "rsl", "Partname"),
+    ("zeichnungsnummer", "Zeichnungsnummer", "suggest", "sl", "DrawingNumber"),
     ("bestellnummer", "Bestellnummer", "suggest", "sl", None),
     ("index_version", "Index / Version", "text", "s", None),
     ("stueckzahl", "Stückzahl", "integer", "", None),
     ("artikelnummer", "Artikelnummer", "suggest", "sl", None),
-    ("kunde", "Kunde", "customer", "sl", "MDM_Customer"),
+    ("kunde", "Kunde", "customer", "sl", "Customer"),
     ("projektnummer", "Projektnummer", "suggest", "s", None),
     ("auftragsnummer", "Auftragsnummer", "text", "s", None),
     ("rohteil_material", "Rohteil-Material", "suggest", "", None),
@@ -40,11 +46,11 @@ ARTICLE_FIELDS = [
 
 OPERATION_FIELDS = [
     ("op_number", "Nr.", "integer", "rlS", None),
-    ("mdm_number", "MDM-Nr.", "integer", "slS", "MDM_FN"),
+    ("mdm_number", "PDB-Nr.", "integer", "slS", "FN"),
     ("nc_number", "NC-Programmnummer", "integer", "slS", None),
     ("machine_id", "Maschine", "integer", "rslS", None),
-    ("prozessbeschreibung", "Prozessbeschreibung", "suggest", "sl", "MDM_OperationTitle"),
-    ("cam_programmierer", "CAM-Programmierer", "user", "sl", "MDM_Programmer"),
+    ("prozessbeschreibung", "Prozessbeschreibung", "suggest", "sl", "OperationTitle"),
+    ("cam_programmierer", "CAM-Programmierer", "user", "sl", "Programmer"),
     ("cnc_bediener", "CNC-Bediener", "user", "", None),
     ("operations_status", "Operations-Status", "choice", "sl", None),
     ("fixture", "Fixture", "suggest", "", None),
@@ -64,7 +70,7 @@ OPERATION_FIELDS = [
 STATUS_CHOICES = [("Freigegeben", False), ("Gesperrt", True)]
 
 
-def _seed_fields(s: Session, entity: str, fields: list) -> None:
+def _seed_fields(s: Session, entity: str, fields: list, prefix: str) -> None:
     existing = {f.key for f in s.scalars(select(FieldDefinition).where(FieldDefinition.entity == entity))}
     for order, (key, label, ftype, flags, placeholder) in enumerate(fields):
         if key in existing:
@@ -78,7 +84,7 @@ def _seed_fields(s: Session, entity: str, fields: list) -> None:
             searchable="s" in flags,
             show_in_list="l" in flags,
             system="S" in flags,
-            placeholder=placeholder,
+            placeholder=f"{prefix}{placeholder}" if placeholder else None,
             sort_order=order * 10,
         )
         if key in ("status", "operations_status"):
@@ -86,6 +92,21 @@ def _seed_fields(s: Session, entity: str, fields: list) -> None:
                 ChoiceValue(value=v, sort_order=i, blocks_export=b) for i, (v, b) in enumerate(STATUS_CHOICES)
             ]
         s.add(fd)
+
+
+def _seed_naming(s: Session) -> None:
+    if s.get(Setting, "folder_prefix") is not None:
+        return
+    fresh = s.scalar(select(FieldDefinition.id).limit(1)) is None
+    has_operations = s.scalar(select(Operation.id).limit(1)) is not None
+    for key, value in (NAMING_EXISTING if has_operations else NAMING_NEW).items():
+        s.add(Setting(key=key, value=value))
+    if not fresh and not has_operations:
+        # set up with an earlier version but nothing produced yet: no posts or folders depend on
+        # the old names, so switch the field placeholders to the neutral ones as well
+        for fd in s.scalars(select(FieldDefinition).where(FieldDefinition.placeholder.like("MDM\\_%", escape="\\"))):
+            fd.placeholder = NAMING_NEW["placeholder_prefix"] + fd.placeholder[4:]
+    s.flush()
 
 
 def migrate_customers(s: Session) -> None:
@@ -114,7 +135,7 @@ def migrate_customers(s: Session) -> None:
         if isinstance(value, str) and value.strip():
             article.data = {**article.data, "kunde": customer_for(value).id}
     fd.type = "customer"
-    fd.placeholder = fd.placeholder or "MDM_Customer"
+    fd.placeholder = fd.placeholder or (s.get(Setting, "placeholder_prefix").value + "Customer")
 
 
 DEFAULT_ADMIN_PASSWORD = "admin"  # only valid until the first login sets a new one
@@ -144,7 +165,12 @@ def seed(s: Session, config: Config) -> None:
             s.add(Setting(key=key, value=value))
     if s.get(Counter, "mdm") is None:
         s.add(Counter(name="mdm", value=0))
-    _seed_fields(s, "article", ARTICLE_FIELDS)
-    _seed_fields(s, "operation", OPERATION_FIELDS)
+    _seed_naming(s)
+    prefix = s.get(Setting, "placeholder_prefix").value
+    _seed_fields(s, "article", ARTICLE_FIELDS, prefix)
+    _seed_fields(s, "operation", OPERATION_FIELDS, prefix)
+    # the number's old name
+    for fd in s.scalars(select(FieldDefinition).where(FieldDefinition.key == "mdm_number", FieldDefinition.label == "MDM-Nr.")):
+        fd.label = "PDB-Nr."
     migrate_customers(s)
     s.commit()

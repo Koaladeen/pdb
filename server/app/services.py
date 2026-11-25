@@ -235,7 +235,7 @@ def operation_paths(s: Session, op: Operation, next_revision: int | None = None)
     nc_root = get_setting(s, "nc_root")
     archive_sub = get_setting(s, "archive_subfolder", "Revisionen")
     num = fmt_mdm(op.mdm_number)
-    folder = ntpath.join(mcam_root, op.machine.mcam_folder, f"MDM{op.mdm_number}")
+    folder = ntpath.join(mcam_root, op.machine.mcam_folder, f"{get_setting(s, 'folder_prefix', 'PDB')}{op.mdm_number}")
     rev = next_revision if next_revision is not None else op.current_revision + 1
     paths = {
         "folder": folder,
@@ -249,7 +249,9 @@ def operation_paths(s: Session, op: Operation, next_revision: int | None = None)
     target = nc_target_name(op)
     if target:
         paths["nc_export"] = ntpath.join(nc_root, op.machine.nc_folder, target)
-        paths["nc_info"] = ntpath.join(nc_root, op.machine.nc_folder, ntpath.splitext(target)[0] + ".MDM")
+        info_ext = get_setting(s, "info_file_extension")
+        if info_ext:  # optional info file next to the program (e.g. ".INF" for a DNC that reads it)
+            paths["nc_info"] = ntpath.join(nc_root, op.machine.nc_folder, ntpath.splitext(target)[0] + info_ext)
     return paths
 
 
@@ -265,7 +267,7 @@ def nc_target_name(op: Operation) -> str | None:
 
 
 def header_values(s: Session, op: Operation) -> dict[str, str]:
-    """Values for the NC header placeholders, keyed by the full placeholder ("#MDM_FN")."""
+    """Values for the NC header placeholders, keyed by the full placeholder (e.g. "#PDB_FN")."""
     values: dict[str, str] = {}
     for entity, source in (("article", op.article.data), ("operation", op.data)):
         for fd in field_defs(s, entity, include_system=True):

@@ -33,7 +33,7 @@ public sealed class FileSession : IDisposable
     public string? PictureAt { get; set; }
     internal readonly SemaphoreSlim Busy = new(1, 1);
 
-    public string Title => $"MDM {MdmText}{(PartName.Length > 0 ? $" – {PartName}" : "")}{(ReadOnly ? " (nur lesen)" : "")}";
+    public string Title => $"PDB-Nr. {MdmText}{(PartName.Length > 0 ? $" – {PartName}" : "")}{(ReadOnly ? " (nur lesen)" : "")}";
 
     public static (DateTime, long)? Stamp(string path)
     {
@@ -49,7 +49,7 @@ public sealed class FileSession : IDisposable
         PicDebounce?.Cancel();
     }
 
-    /// <summary>MDM's picture names: Pic00084197.png.cam (current, with toolpaths), PIC00084197.png
+    /// <summary>Picture names: Pic00084197.png.cam (current, with toolpaths), PIC00084197.png
     /// (older model view), Pic-00000001.png. Case does not matter.</summary>
     public bool IsPicture(string fileName) =>
         System.Text.RegularExpressions.Regex.IsMatch(fileName, $@"^pic-?{MdmText}\.png(\.cam)?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
@@ -109,6 +109,7 @@ public sealed class SessionManager : IDisposable
         }
 
         var op = await api.Operation(operationId);
+        NcHeader.Remember(op.PlaceholderPrefix); // so the NC export recognises this server's placeholders
         if (readOnly) return OpenReadOnly(op);
 
         CheckoutResult checkout;

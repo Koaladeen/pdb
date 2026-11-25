@@ -72,7 +72,7 @@ def test_new_installation_runs_the_wizard_once(fresh):
     part = fresh.post("/articles", headers=h, json={"data": {"teilename": "Erstes Teil"}}).json()
     op = fresh.post(f"/articles/{part['id']}/operations", headers=h, json={"machine_id": machines["DMU 50"]["id"]}).json()
     assert op["mdm_number"] == 1001
-    assert op["paths"]["mcam"] == r"\\server\cam\Machines\DMU50\MDM1001\00001001.mcam"
+    assert op["paths"]["mcam"] == r"\\server\cam\Machines\DMU50\PDB1001\00001001.mcam"
 
 
 def test_bad_machine_folder_is_refused(fresh):

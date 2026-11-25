@@ -17,7 +17,7 @@ function url(op) {
 
 // <img> that fills itself in; empty placeholder when the operation has no picture.
 export function pictureImg(op, cls = "") {
-  const img = h("img", { class: cls, alt: op.picture_at ? `Bild MDM ${op.mdm_number_text}` : "", loading: "lazy" });
+  const img = h("img", { class: cls, alt: op.picture_at ? `Bild PDB-Nr. ${op.mdm_number_text}` : "", loading: "lazy" });
   if (!op.picture_at) {
     img.hidden = true;
     return img;

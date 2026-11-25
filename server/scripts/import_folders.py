@@ -1,15 +1,16 @@
-"""Read existing MDM operation folders back into PDB.
+"""Read existing numbered operation folders (<prefix><number>, e.g. PDB1001) back into PDB.
 
 Runs on a Windows PC that sees the share (the server cannot). For every
-<Mastercam main folder>\\<machine folder>\\MDM<number>\\ it reads the header of the posted
+<Mastercam main folder>\\<machine folder>\\<prefix><number>\\ it reads the header of the posted
 <number>.nc (DB-NR, TEILENAME, ZCH-NR, OP-NAME, PROGRAMMIERER), groups operations into parts
 by drawing number + part name, and uploads the picture (Pic<number>.png.cam, else .png).
 
 Dry run by default - shows what would happen and changes nothing. Add --apply to write.
-MDM numbers that already exist in PDB are skipped, so running it twice is harmless.
+Numbers that already exist in PDB are skipped, so running it twice is harmless.
 
   python scripts/import_folders.py --server http://pdb-server:8000 --user admin
   python scripts/import_folders.py --server ... --user admin --machine DMU50 --apply
+  python scripts/import_folders.py --server ... --user admin --prefix OLD   # folders OLD1001, ...
 
 Only standard library; asks for the password itself (never pass it on the command line).
 """
@@ -23,7 +24,6 @@ import urllib.request
 from pathlib import Path
 
 HEADER = re.compile(r"(DB-NR\.?|TEILENAME|ZCH-NR|OP-NAME|PROGRAMMIERER)\s*:\s*(.*?)\s*\)?\s*$")
-FOLDER = re.compile(r"^MDM(\d+)$", re.IGNORECASE)
 
 
 class Api:
@@ -68,8 +68,9 @@ def login(api: Api, user: str) -> None:
     api.token = api.call("POST", "/auth/login", {"username": user, "password": password, "pc_name": "import"})["token"]
 
 
-def import_folders(api: Api, root: Path, only: list[str] | None, apply: bool) -> dict:
-    """Scan root/<machine folder>/MDM<nr>/ and record each operation. Returns counts."""
+def import_folders(api: Api, root: Path, only: list[str] | None, apply: bool, prefix: str = "PDB") -> dict:
+    """Scan root/<machine folder>/<prefix><nr>/ and record each operation. Returns counts."""
+    folder_re = re.compile(rf"^{re.escape(prefix)}(\d+)$", re.IGNORECASE)
     machines = {m["mcam_folder"].lower(): m for m in api.call("GET", "/admin/machines")}
     users = {u["display_name"].strip().lower(): u["id"] for u in api.call("GET", "/users") if u.get("active", True)}
     if not root.is_dir():
@@ -84,7 +85,7 @@ def import_folders(api: Api, root: Path, only: list[str] | None, apply: bool) ->
         if only and mdir.name not in only:
             continue
         machine = machines.get(mdir.name.lower())
-        op_dirs = sorted((p for p in mdir.iterdir() if p.is_dir() and FOLDER.match(p.name)), key=lambda p: int(FOLDER.match(p.name)[1]))
+        op_dirs = sorted((p for p in mdir.iterdir() if p.is_dir() and folder_re.match(p.name)), key=lambda p: int(folder_re.match(p.name)[1]))
         if not op_dirs:
             continue
         if machine is None:
@@ -92,13 +93,13 @@ def import_folders(api: Api, root: Path, only: list[str] | None, apply: bool) ->
             continue
         print(f"== {mdir.name} -> {machine['name']}")
         for odir in op_dirs:
-            n = int(FOLDER.match(odir.name)[1])
+            n = int(folder_re.match(odir.name)[1])
             if n < 1:
                 continue
             num = f"{n:08d}"
             nc = odir / f"{num}.nc"
             head = read_header(nc) if nc.exists() else {}
-            article = {"teilename": head.get("TEILENAME") or f"Unbekannt (MDM{n})"}
+            article = {"teilename": head.get("TEILENAME") or f"Unbekannt ({prefix}{n})"}
             if head.get("ZCH-NR"):
                 article["zeichnungsnummer"] = head["ZCH-NR"]
             operation = {"cam_system": "Mastercam"}
@@ -119,7 +120,7 @@ def import_folders(api: Api, root: Path, only: list[str] | None, apply: bool) ->
             pic = best_picture(odir, num)
             if res["result"] == "exists":
                 stats["vorhanden"] += 1
-                print(f"   MDM{n}: schon in PDB")
+                print(f"   {prefix}{n}: schon in PDB")
                 continue
             stats["neu"] += 1
             key = (article.get("zeichnungsnummer", "").lower(), article["teilename"].lower())
@@ -128,7 +129,7 @@ def import_folders(api: Api, root: Path, only: list[str] | None, apply: bool) ->
             new_part = res["article_created"] and earlier == 0
             op_number = res["op_number"] + 10 * earlier
             part = f"{article.get('zeichnungsnummer', '–')} / {article['teilename']}"
-            print(f"   MDM{n}: {res['result']} · Teil {part}{' (neu)' if new_part else ''} · Nr. {op_number}"
+            print(f"   {prefix}{n}: {res['result']} · Teil {part}{' (neu)' if new_part else ''} · Nr. {op_number}"
                   f" · {operation.get('prozessbeschreibung', '?')} · {prog or '–'}{' · Bild ' + pic.name if pic else ''}")
             if apply and pic:
                 api.call("PUT", f"/operations/{res['operation_id']}/picture", raw=pic.read_bytes())
@@ -152,12 +153,14 @@ def main():
     ap.add_argument("--root", help="Mastercam main folder (default: the server's setting)")
     ap.add_argument("--machine", action="append", help="only this machine folder (repeatable)")
     ap.add_argument("--apply", action="store_true", help="really write (default: dry run)")
+    ap.add_argument("--prefix", help="operation folder name before the number (default: the server's setting)")
     args = ap.parse_args()
     utf8_console()
     api = Api(args.server)
     login(api, args.user)
-    root = Path(args.root or api.call("GET", "/admin/settings")["mcam_root"])
-    import_folders(api, root, args.machine, args.apply)
+    settings = api.call("GET", "/admin/settings")
+    root = Path(args.root or settings["mcam_root"])
+    import_folders(api, root, args.machine, args.apply, args.prefix or settings.get("folder_prefix") or "PDB")
 
 
 if __name__ == "__main__":

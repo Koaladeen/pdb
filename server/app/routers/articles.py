@@ -15,6 +15,7 @@ from ..services import (
     audit,
     field_defs,
     fmt_mdm,
+    get_setting,
     header_values,
     lock_out,
     merge_data,
@@ -71,6 +72,8 @@ def operation_detail(s: Session, op: Operation, cutoff: datetime) -> dict:
         "machine_definition": op.machine.machine_definition,
         # imported, not copied yet: the helper copies this original into the folder on first open
         "import_source": import_source(s, op),
+        # the helper looks for #<prefix>... in posted NC files
+        "placeholder_prefix": get_setting(s, "placeholder_prefix", "PDB_"),
     }
 
 
@@ -100,7 +103,7 @@ def search_articles(
     _: User = Depends(current_user),
     cutoff: datetime = Depends(stale_before),
 ):
-    """Free text `q` searches all searchable fields of parts and operations, plus MDM and NC
+    """Free text `q` searches all searchable fields of parts and operations, plus PDB and NC
     numbers. Single fields: ?article.kunde=Muster&operation.prozessbeschreibung=OP (contains)."""
     query = select(Article)
     op_conds = []
@@ -257,7 +260,7 @@ def create_operation(
     user: User = Depends(current_user),
     cutoff: datetime = Depends(stale_before),
 ):
-    """Creates an operation with the next MDM number. Machines that name programs by NC number
+    """Creates an operation with the next PDB number. Machines that name programs by NC number
     (FANUC) get the next NC number straight away."""
     a = get_article(s, article_id)
     m = active_machine(s, body.machine_id)
@@ -403,7 +406,7 @@ def _info_file(s: Session, op: Operation, user: User, paths: dict) -> str:
     a = op.article.data
     return "\r\n".join(
         [
-            "MDM-Information",
+            f"{'MDM' if paths['nc_info'].upper().endswith('.MDM') else 'PDB'}-Information",
             f"Transfer by : {user.display_name}",
             f"Description : {a.get('zeichnungsnummer', '')} ♦ {a.get('teilename', '')}",
             f"Drawing No  : {a.get('zeichnungsnummer', '')}",
@@ -420,7 +423,7 @@ def _info_file(s: Session, op: Operation, user: User, paths: dict) -> str:
 @router.post("/operations/{operation_id}/nc-export")
 def nc_export(operation_id: int, s: Session = Depends(get_db), user: User = Depends(current_user)):
     """Checks that the export is allowed and returns everything the add-in needs: where to post,
-    where to copy, the header placeholder values and the text of the .MDM info file."""
+    where to copy, the header placeholder values and the text of the optional info file."""
     op = get_operation(s, operation_id)
     require_machine_right(s, user, op.machine_id)
     blocked = status_blocks_export(s, op)
@@ -440,7 +443,9 @@ def nc_export(operation_id: int, s: Session = Depends(get_db), user: User = Depe
         },
         "program_name": paths["nc_export"].rsplit("\\", 1)[-1].rsplit(".", 1)[0],
         "header_values": header_values(s, op),
-        "info_file_text": _info_file(s, op, user, paths),
+        "info_file_text": _info_file(s, op, user, paths) if "nc_info" in paths else "",
+        # the helper fills every #<prefix>... in the posted header (#<prefix>PGM = program name)
+        "placeholder_prefix": get_setting(s, "placeholder_prefix", "PDB_"),
     }
 
 

@@ -1,6 +1,6 @@
-"""Reading existing MDM operation folders back into the database (admin only).
+"""Reading existing numbered operation folders back into the database (admin only).
 The scanning happens on a PC that sees the share (scripts/import_folders.py); this endpoint
-only records one operation with its existing MDM number. Safe to repeat: existing MDM numbers
+only records one operation with its existing number. Safe to repeat: existing numbers
 are left alone."""
 from typing import Any
 
