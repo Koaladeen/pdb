@@ -22,7 +22,10 @@ public class FlowTests
         public List<string> Opened { get; } = new();
         void IMastercam.Open(string file) { Opened.Add(file); Current = file; }
         public bool StartEmpty() => true;
-        public bool IsOpen(string file) => Open && (Current is null || Same(Current, file));
+        public volatile bool Busy;
+        public string? FailCreate;
+        public OpenState State(string file) =>
+            Busy ? OpenState.Unknown : Open && (Current is null || Same(Current, file)) ? OpenState.Open : OpenState.Closed;
         public string? MachineOf(string file) => Open && Current is not null && Same(Current, file) ? Machine : null;
         public string? SetMachine(string file, string mmd) { Machine = mmd; return null; }
         public string? SaveAs(string file, string target)
@@ -34,14 +37,15 @@ public class FlowTests
             return null;
         }
         public List<(string Target, string Mmd)> Created { get; } = new();
-        public string? CreateNew(string target, string mmd)
+        public NewFileOutcome CreateNew(string target, string mmd)
         {
+            if (FailCreate is not null) return new(FailCreate);
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.WriteAllText(target, "new file");
             Created.Add((target, mmd));
             Current = target;
             Machine = mmd;
-            return null;
+            return new(null);
         }
         static bool Same(string a, string b) => string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase);
     }
@@ -186,6 +190,99 @@ public class FlowTests
             await http.PatchAsJsonAsync($"admin/machines/{dmuId}", new { machine_definition = before ?? "" });
             File.Delete(mmd);
         }
+    }
+
+    /// <summary>A new operation in PDB, a part and its op; returns (opId, mcam path).</summary>
+    static async Task<(int, string)> NewOperation(HttpClient http, string name)
+    {
+        var machines = await http.GetFromJsonAsync<JsonElement>("machines");
+        var dmu = machines.EnumerateArray().First(m => m.GetProperty("mcam_folder").GetString() == "DMU50").GetProperty("id").GetInt32();
+        var part = await (await http.PostAsJsonAsync("articles", new { data = new { teilename = name } })).Content.ReadFromJsonAsync<JsonElement>();
+        var op = await (await http.PostAsJsonAsync($"articles/{part.GetProperty("id").GetInt32()}/operations", new { machine_id = dmu })).Content.ReadFromJsonAsync<JsonElement>();
+        return (op.GetProperty("id").GetInt32(), op.GetProperty("paths").GetProperty("mcam").GetString()!);
+    }
+
+    static async Task<HttpClient> AdminHttp()
+    {
+        var (adminToken, _) = await ServerApi.Login(Server, "admin", AdminPassword);
+        var http = new HttpClient { BaseAddress = new Uri(Server + "/") };
+        http.DefaultRequestHeaders.Authorization = new("Bearer", adminToken);
+        return http;
+    }
+
+    [Fact]
+    public async Task New_file_that_Mastercam_could_not_create_frees_the_lock()
+    {
+        if (Environment.GetEnvironmentVariable("PDB_FLOW_TEST") == "0") return;
+        Assert.True(await ServerUp(), $"Demo server not reachable at {Server}. Start it (see server/README.md) or set PDB_FLOW_TEST=0.");
+        using var http = await AdminHttp();
+        var (opId, mcam) = await NewOperation(http, "Neue Datei scheitert");
+        var (annaToken, _) = await ServerApi.Login(Server, "anna", "");
+        var anna = new ServerApi(Server, annaToken);
+
+        var mc = new FakeMastercam { FailCreate = "Unbekannter Befehl: NEWFILE" };
+        var notes = new List<string>();
+        using var manager = Manager(anna, mc, notes);
+        Assert.Equal(200, (await manager.Open(opId, readOnly: false)).Status);
+
+        await Until(() => Task.FromResult(manager.All.Count == 0 ? "closed" : null), "session closed");
+        Assert.False(File.Exists(mcam));
+        Assert.Null((await anna.Operation(opId)).Lock);
+        lock (notes) Assert.Contains(notes, n => n.Contains("Unbekannter Befehl"));
+    }
+
+    [Fact]
+    public async Task Busy_Mastercam_keeps_the_file()
+    {
+        if (Environment.GetEnvironmentVariable("PDB_FLOW_TEST") == "0") return;
+        Assert.True(await ServerUp(), $"Demo server not reachable at {Server}. Start it (see server/README.md) or set PDB_FLOW_TEST=0.");
+        using var http = await AdminHttp();
+        var (opId, _) = await NewOperation(http, "Mastercam beschaeftigt");
+        var (annaToken, _) = await ServerApi.Login(Server, "anna", "");
+
+        var mc = new FakeMastercam();
+        using var manager = Manager(new ServerApi(Server, annaToken), mc, new());
+        Assert.Equal(200, (await manager.Open(opId, readOnly: false)).Status);
+        await Until(() => Task.FromResult(mc.Created.Count == 1 ? "created" : null), "file created");
+
+        mc.Busy = true; // does not answer: must not count as closed
+        await Task.Delay(4000);
+        Assert.Single(manager.All);
+        mc.Busy = false;
+        mc.Open = false;
+        await Until(() => Task.FromResult(manager.All.Count == 0 ? "closed" : null), "release after close");
+    }
+
+    [Fact]
+    public async Task Leftover_locks_are_freed_or_taken_over()
+    {
+        if (Environment.GetEnvironmentVariable("PDB_FLOW_TEST") == "0") return;
+        Assert.True(await ServerUp(), $"Demo server not reachable at {Server}. Start it (see server/README.md) or set PDB_FLOW_TEST=0.");
+        using var http = await AdminHttp();
+        var (closedOp, closedMcam) = await NewOperation(http, "Rest-Sperre zu");
+        var (openOp, openMcam) = await NewOperation(http, "Rest-Sperre offen");
+        var (annaToken, _) = await ServerApi.Login(Server, "anna", "");
+        var anna = new ServerApi(Server, annaToken);
+
+        // a helper that is gone: both checked out, files exist, then no more heartbeats
+        foreach (var (id, path) in new[] { (closedOp, closedMcam), (openOp, openMcam) })
+        {
+            await anna.Checkout(id);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            await File.WriteAllTextAsync(path, "file");
+        }
+
+        // the new helper: Mastercam has only openMcam open
+        var mc = new FakeMastercam { Current = openMcam };
+        var notes = new List<string>();
+        using var manager = Manager(anna, mc, notes);
+        await Until(async () => (await anna.Operation(closedOp)).Lock is null && manager.All.Any(x => x.OperationId == openOp) ? "ok" : null,
+            "leftover lock released and open file taken over", seconds: 40);
+        Assert.NotNull((await anna.Operation(openOp)).Lock);
+
+        // the taken-over file is handled like any other: closing it releases the lock
+        mc.Open = false;
+        await Until(async () => (await anna.Operation(openOp)).Lock is null ? "released" : null, "release after close");
     }
 
     [Fact]

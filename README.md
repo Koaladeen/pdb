@@ -23,6 +23,11 @@ or a demo. No admin rights, no Python needed (it is included), works offline. Af
 fields. Existing Mastercam files: Admin → Import. Update = run a newer setup (data stays);
 uninstall via Windows Settings → Apps.
 
+**Portable, no installation** (one PC, everyone works at it): `PDB-Portable-<version>.zip` from
+[Koaladeen/pdb-portable](https://github.com/Koaladeen/pdb-portable/releases) – unpack, start
+`PDB.exe`; program and database stay in that folder. Built from this repo by the same
+`installer/build.sh` (folder `installer/portable/`), so both are always the same version.
+
 ## Server for several PCs
 
 - **Windows**: `install/PDB-Server-einrichten.cmd` (as administrator) – Python environment, start at

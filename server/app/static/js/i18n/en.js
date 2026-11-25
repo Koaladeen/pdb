@@ -470,6 +470,10 @@ export const TEXTS = {
 
 export const PATTERNS = [
   [
+    "Alle {0} geöffneten Karten aus der Liste schließen? Die Karten selbst bleiben gespeichert.",
+    "Close all {0} open cards in the list? The cards themselves stay saved."
+  ],
+  [
     "Die ersten {0} von {1} Karten – alle werden importiert.",
     "The first {0} of {1} cards – all of them are imported."
   ],

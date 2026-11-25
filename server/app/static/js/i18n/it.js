@@ -488,6 +488,10 @@ export const TEXTS = {
 
 export const PATTERNS = [
   [
+    "Alle {0} geöffneten Karten aus der Liste schließen? Die Karten selbst bleiben gespeichert.",
+    "Chiudere tutte le {0} schede aperte nell'elenco? Le schede stesse restano salvate."
+  ],
+  [
     "Die ersten {0} von {1} Karten – alle werden importiert.",
     "Le prime {0} di {1} schede – vengono importate tutte."
   ],

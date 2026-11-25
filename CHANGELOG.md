@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.1
+
+- **Portable version** `PDB-Portable-<version>.zip` (releases in Koaladeen/pdb-portable): one
+  folder with program and data, nothing installed; for one PC that several people work at.
+- PDB Helper 0.2.9 – fewer stuck locks: asks Mastercam exactly which file is open (a busy
+  Mastercam no longer counts as closed; drive letter vs. network path no longer matters),
+  releases the lock when a new file could not be created, and after a restart/crash/reboot
+  takes over files still open in Mastercam and frees locks of files that are not.
+- Clearer message when the Mastercam bridge is too old for a function.
+- "Alle ×" (close all open cards) asks first when more than one card is open.
+- Launcher: each Windows user on a PC gets their own PDB Helper.
+
 ## 0.3.0
 
 - Card page: each user can rearrange its blocks (card fields, picture, process data) – order,

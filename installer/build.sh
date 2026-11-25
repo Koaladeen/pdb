@@ -3,6 +3,7 @@
 # PDB Helper + Mastercam bridge, PDB.exe launcher). Per-user install, no admin rights, works offline.
 #
 #   bash installer/build.sh            # version from VERSION in the repo root
+# Also builds dist/PDB-Portable-<version>.zip: the same files as one folder (installer/portable).
 #
 # Needs: .NET SDK (builds net48), a helper release in helper/release/out (bash helper/release.sh),
 # and the Python files in installer/cache - downloaded once:
@@ -83,3 +84,21 @@ mkdir -p "$ROOT/dist"
 cp PdbSetup/bin/Release/net48/PdbSetup.exe "$ROOT/dist/PDB-Setup-$VERSION.exe"
 cp PdbSetup/bin/Release/net48/PdbSetup.exe.config "$ROOT/dist/PDB-Setup-$VERSION.exe.config" 2>/dev/null || true
 echo "== $ROOT/dist/PDB-Setup-$VERSION.exe ($(du -m "$ROOT/dist/PDB-Setup-$VERSION.exe" | cut -f1) MB)"
+
+# ---- 4. portable version: the same payload as a folder, data next to it (installer/portable)
+echo "== PDB-Portable"
+PORT="$BUILD/PDB-Portable-$VERSION"
+cp -r "$PAY" "$PORT"
+cp portable/LIESMICH.txt "portable/PDB beenden.cmd" "$PORT/"
+sed "s/\"Version\":\"\"/\"Version\":\"$VERSION\"/" portable/install.json > "$PORT/install.json"
+"$HOSTPY" - "$BUILD" "PDB-Portable-$VERSION" "$ROOT/dist/PDB-Portable-$VERSION.zip" <<'PY'
+import os, sys, zipfile
+base, name, out = sys.argv[1], sys.argv[2], sys.argv[3]
+with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+    for d, _, files in os.walk(os.path.join(base, name)):
+        for f in files:
+            p = os.path.join(d, f)
+            z.write(p, os.path.relpath(p, base).replace(os.sep, "/"))  # one top folder in the zip
+print(f"   {os.path.getsize(out) // 1048576} MB")
+PY
+echo "== $ROOT/dist/PDB-Portable-$VERSION.zip"

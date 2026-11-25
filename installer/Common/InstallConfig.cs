@@ -24,6 +24,10 @@ namespace Pdb.Install
         public string SuggestMcam { get; set; } = "";
         public string SuggestNc { get; set; } = "";
 
+        /// <summary>Portable: everything in one folder (program next to PDB.exe, data in "data"),
+        /// paths in install.json relative to that folder, no Start menu or "Apps" entry.</summary>
+        public bool Portable { get; set; }
+
         static string LocalAppData => Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         public static string DefaultInstallDir => Path.Combine(LocalAppData, "Programs", "PDB");
         // same as the earlier zip package (Start-PDB.cmd): an existing database is found and kept
@@ -54,10 +58,16 @@ namespace Pdb.Install
             {
                 var c = new JavaScriptSerializer().Deserialize<InstallConfig>(File.ReadAllText(path));
                 c.InstallDir = installDir.TrimEnd('\\');
+                // portable: relative paths count from the folder, wherever it was copied to
+                c.DataDir = Resolve(c.InstallDir, c.DataDir);
+                if (c.SuggestMcam.Length > 0) c.SuggestMcam = Resolve(c.InstallDir, c.SuggestMcam);
+                if (c.SuggestNc.Length > 0) c.SuggestNc = Resolve(c.InstallDir, c.SuggestNc);
                 return c;
             }
             catch { return null; }
         }
+
+        static string Resolve(string dir, string path) => Path.IsPathRooted(path) ? path : Path.GetFullPath(Path.Combine(dir, path));
 
         public const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\PDB";
 

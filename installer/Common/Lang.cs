@@ -218,6 +218,18 @@ namespace Pdb.Install
                 "Ištrinti ir jūsų duomenis (duomenų bazę, atsargines kopijas, paveikslėlius)? To negalima atšaukti.\n\nNe = duomenys lieka {0}." },
             ["PDB wurde entfernt."] = new[] { "PDB has been removed.", "PDB è stato rimosso.", "PDB pašalintas." },
             ["Deine Daten liegen weiterhin in {0}."] = new[] { "Your data is still in {0}.", "I tuoi dati sono ancora in {0}.", "Jūsų duomenys vis dar yra {0}." },
+            ["In diesen Ordner kann nicht geschrieben werden:\n{0}\n\nDen PDB-Ordner bitte an einen Ort kopieren, an dem du schreiben darfst (z. B. C:\\PDB oder Dokumente)."] = new[] {
+                "This folder is not writable:\n{0}\n\nPlease copy the PDB folder to a place where you may write (e.g. C:\\PDB or Documents).",
+                "Impossibile scrivere in questa cartella:\n{0}\n\nCopia la cartella PDB in un percorso con permessi di scrittura (ad es. C:\\PDB o Documenti).",
+                "Į šį aplanką negalima rašyti:\n{0}\n\nNukopijuokite PDB aplanką į vietą, kur galite rašyti (pvz. C:\\PDB arba Dokumentai)." },
+            ["PDB wird beendet und von diesem Windows-Benutzer gelöst (Link für „Öffnen“). Der PDB-Ordner mit deinen Daten bleibt unverändert. Fortfahren?"] = new[] {
+                "PDB is stopped and detached from this Windows user (link for \"Open\"). The PDB folder with your data stays as it is. Continue?",
+                "PDB viene arrestato e scollegato da questo utente Windows (collegamento per \"Apri\"). La cartella PDB con i tuoi dati resta invariata. Continuare?",
+                "PDB bus sustabdytas ir atjungtas nuo šio Windows naudotojo (nuoroda „Atidaryti“). PDB aplankas su jūsų duomenimis lieka nepakeistas. Tęsti?" },
+            ["Erledigt. Um PDB ganz zu entfernen, den Ordner löschen:\n{0}\n\nAchtung: darin liegt auch die Datenbank (Ordner „data“)."] = new[] {
+                "Done. To remove PDB completely, delete the folder:\n{0}\n\nCareful: it also holds the database (folder \"data\").",
+                "Fatto. Per rimuovere PDB del tutto, elimina la cartella:\n{0}\n\nAttenzione: contiene anche il database (cartella \"data\").",
+                "Atlikta. Norėdami visiškai pašalinti PDB, ištrinkite aplanką:\n{0}\n\nDėmesio: jame yra ir duomenų bazė (aplankas „data“)." },
         };
     }
 }

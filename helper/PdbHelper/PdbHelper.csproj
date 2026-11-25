@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>PdbHelper</AssemblyName>
     <RootNamespace>PdbHelper</RootNamespace>
-    <Version>0.2.8</Version>
+    <Version>0.2.9</Version>
     <Product>PDB Helper</Product>
   </PropertyGroup>
 

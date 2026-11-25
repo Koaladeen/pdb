@@ -1,7 +1,7 @@
 // Open part cards in the sidebar: switch between cards without searching again.
 import { load, save } from "./storage.js";
 import { customerName } from "./store.js";
-import { clear, h } from "./ui.js";
+import { clear, confirmDialog, h } from "./ui.js";
 
 const NAME = "openCards";
 const MAX = 30;
@@ -42,7 +42,11 @@ export function closeCard(id) {
   }
 }
 
-export function closeAllCards() {
+export async function closeAllCards() {
+  const n = openCards().length;
+  // one click must not empty a long list by accident; the cards themselves stay saved
+  if (n > 1 && !(await confirmDialog("Alle Karten schließen",
+    `Alle ${n} geöffneten Karten aus der Liste schließen? Die Karten selbst bleiben gespeichert.`, "Schließen"))) return;
   changed([]);
   if (currentCardId() !== null) location.hash = "#/search";
 }

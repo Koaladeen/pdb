@@ -11,8 +11,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+GIVEN_HOST="${PDB_HOST:-}"   # set on the command line: wins over release.local
 [ -f release.local ] && . ./release.local
-HOST="${PDB_HOST:-none}"
+HOST="${GIVEN_HOST:-${PDB_HOST:-none}}"
 REMOTE_DIR="${PDB_DOWNLOADS:-.local/share/pdb/files/downloads}"   # PDB_DATA_DIR/downloads on the Pi
 
 version_of() { sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$1" | head -1; }

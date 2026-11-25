@@ -10,7 +10,10 @@ public interface IMastercam
 {
     void Open(string file);
     bool StartEmpty();
-    bool IsOpen(string file);
+
+    /// <summary>Is the file open in a Mastercam on this PC? Unknown when a Mastercam with the
+    /// bridge does not answer (busy, e.g. calculating toolpaths) - never close a file then.</summary>
+    OpenState State(string file);
 
     /// <summary>Machine definition (.mcam-mmd) of the file if it is open in a Mastercam with
     /// the bridge; null if that cannot be told.</summary>
@@ -23,9 +26,15 @@ public interface IMastercam
     string? SaveAs(string file, string target);
 
     /// <summary>New operation: create the .mcam (new file, machine group from the machine
-    /// definition, saved at target) - starting Mastercam if needed. Null = done, else the error.</summary>
-    string? CreateNew(string target, string machineDefinition);
+    /// definition, saved at target) - starting Mastercam if needed.</summary>
+    NewFileOutcome CreateNew(string target, string machineDefinition);
 }
+
+public enum OpenState { Closed, Open, Unknown }
+
+/// <summary>Error null = created. UserSaves = Mastercam runs without the bridge: the user saves
+/// the new file under the path himself, so the lock stays for a while.</summary>
+public sealed record NewFileOutcome(string? Error, bool UserSaves = false);
 
 /// <summary>Opening files in Mastercam and finding out whether a file is still open.
 /// With the PDB bridge add-in loaded in Mastercam, files open in the running Mastercam and the
@@ -104,21 +113,48 @@ public sealed class Mastercam(HelperConfig config) : IMastercam
         return ps.Length > 0;
     }
 
-    /// <summary>Exact answer from the bridge(s) if any runs; else: any Mastercam window title
-    /// contains the file name (e.g. "00000001").</summary>
-    public bool IsOpen(string file)
+    /// <summary>Asks every running Mastercam: one with the bridge says exactly which file it has
+    /// open; one with the bridge loaded that does not answer is busy (Unknown); one without the
+    /// bridge is judged by its window title.</summary>
+    public OpenState State(string file)
     {
-        var bridged = false;
-        foreach (var pid in Bridge.Candidates())
+        var pids = Bridge.Candidates();
+        if (pids.Count == 0) return OpenState.Closed;
+        var pipes = Bridge.Pipes();
+        var unsure = false;
+        foreach (var pid in pids)
         {
-            var answer = Bridge.Send(pid, "CURRENT", connectTimeoutMs: 300);
-            if (answer is null || !answer.StartsWith("OK")) continue;
-            bridged = true;
-            var current = answer.Split('\t', 2).ElementAtOrDefault(1) ?? "";
-            if (SamePath(current, file)) return true;
+            var answer = Bridge.Send(pid, "CURRENT", connectTimeoutMs: 500, readTimeoutMs: 3000);
+            if (answer is not null && answer.StartsWith("OK"))
+            {
+                if (SameFile(answer.Split('\t', 2).ElementAtOrDefault(1) ?? "", file)) return OpenState.Open;
+                continue; // this Mastercam has another file (or none) open
+            }
+            if (pipes.Contains(pid))
+            {
+                unsure = true; // bridge loaded but busy
+                continue;
+            }
+            if (TitleOf(pid).Contains(Path.GetFileNameWithoutExtension(file), StringComparison.OrdinalIgnoreCase)) return OpenState.Open;
         }
-        if (bridged) return TitleShows(file, onlyWithoutBridge: true);
-        return TitleShows(file, onlyWithoutBridge: false);
+        return unsure ? OpenState.Unknown : OpenState.Closed;
+    }
+
+    /// <summary>Same path, or the same file name: PDB file names are unique (00084197.mcam) and
+    /// Mastercam may report a drive letter where PDB has the network name, or the other way round.</summary>
+    internal static bool SameFile(string current, string file) =>
+        SamePath(current, file)
+        || (current.Length > 0 && string.Equals(Path.GetFileName(current), Path.GetFileName(file), StringComparison.OrdinalIgnoreCase));
+
+    static string TitleOf(int pid)
+    {
+        try
+        {
+            using var p = Process.GetProcessById(pid);
+            return p.MainWindowTitle;
+        }
+        catch (ArgumentException) { return ""; }         // ended meanwhile
+        catch (InvalidOperationException) { return ""; }
     }
 
     public string? MachineOf(string file)
@@ -142,13 +178,13 @@ public sealed class Mastercam(HelperConfig config) : IMastercam
         return answer is not null && answer.StartsWith("OK") ? null : Error(answer);
     }
 
-    public string? CreateNew(string target, string machineDefinition)
+    public NewFileOutcome CreateNew(string target, string machineDefinition)
     {
         var pid = Bridge.Find();
         if (pid is null)
         {
-            if (AnyRunning()) return "Mastercam läuft ohne PDB-Bridge – Datei bitte selbst speichern unter: " + target;
-            if (StartExe() is not { } exe) return "Mastercam-Start abgebrochen";
+            if (AnyRunning()) return new("Mastercam läuft ohne PDB-Bridge – Datei bitte selbst speichern unter: " + target, UserSaves: true);
+            if (StartExe() is not { } exe) return new("Mastercam-Start abgebrochen");
             Process.Start(new ProcessStartInfo(exe) { UseShellExecute = false });
             Log.Write($"Started {exe} for a new file, waiting for the bridge");
             var until = DateTime.Now.AddMinutes(3); // Mastercam takes a while (licence, add-ins)
@@ -157,15 +193,22 @@ public sealed class Mastercam(HelperConfig config) : IMastercam
                 Thread.Sleep(2000);
                 pid = Bridge.Find();
             }
-            if (pid is null) return "Mastercam ist gestartet, aber ohne PDB-Bridge – Datei bitte selbst speichern unter: " + target;
+            if (pid is null) return new("Mastercam ist gestartet, aber ohne PDB-Bridge – Datei bitte selbst speichern unter: " + target, UserSaves: true);
         }
         var answer = Bridge.Send(pid.Value, $"NEWFILE\t{target}\t{machineDefinition}", readTimeoutMs: 10 * 60_000);
         Log.Write($"New file via bridge: {target} ({machineDefinition}) -> {answer ?? "no answer"}");
-        return answer is not null && answer.StartsWith("OK") ? null : Error(answer);
+        return new(answer is not null && answer.StartsWith("OK") ? null : Error(answer));
     }
 
-    static string Error(string? answer) =>
-        answer is null ? "Mastercam antwortet nicht" : answer.Split('\t', 2).ElementAtOrDefault(1) ?? answer;
+    static string Error(string? answer)
+    {
+        if (answer is null) return "Mastercam antwortet nicht";
+        var text = answer.Split('\t', 2).ElementAtOrDefault(1) ?? answer;
+        // an older bridge in Mastercam does not know newer commands (e.g. NEWFILE before 0.3.0)
+        return text.StartsWith("Unbekannter Befehl", StringComparison.Ordinal)
+            ? "Die PDB-Bridge in Mastercam ist zu alt für diese Funktion – bitte die aktuelle PdbBridge.dll einspielen und Mastercam neu starten"
+            : text;
+    }
 
     /// <summary>The Mastercam (with bridge) that has exactly this file open.</summary>
     static int? BridgeFor(string file)
@@ -184,30 +227,6 @@ public sealed class Mastercam(HelperConfig config) : IMastercam
         if (a.Length == 0) return false;
         try { return string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase); }
         catch (Exception) { return string.Equals(a, b, StringComparison.OrdinalIgnoreCase); }
-    }
-
-    /// <summary>Window-title check; with onlyWithoutBridge only Mastercams that have no bridge
-    /// are looked at (a second Mastercam started without the add-in).</summary>
-    static bool TitleShows(string file, bool onlyWithoutBridge)
-    {
-        var stem = Path.GetFileNameWithoutExtension(file);
-        foreach (var p in Process.GetProcessesByName("Mastercam"))
-        {
-            try
-            {
-                if (onlyWithoutBridge && Bridge.Send(p.Id, "PING", connectTimeoutMs: 200) is not null) continue;
-                if (p.MainWindowTitle.Contains(stem, StringComparison.OrdinalIgnoreCase)) return true;
-            }
-            catch (InvalidOperationException)
-            {
-                // process ended while we looked
-            }
-            finally
-            {
-                p.Dispose();
-            }
-        }
-        return false;
     }
 
     string? ExePath() =>
@@ -230,6 +249,26 @@ public sealed class Mastercam(HelperConfig config) : IMastercam
 public static class Bridge
 {
     const string PipePrefix = "PdbBridge-";
+
+    /// <summary>Process ids of the Mastercams that have the bridge loaded (its pipe exists),
+    /// whether or not they answer right now.</summary>
+    public static HashSet<int> Pipes()
+    {
+        var ids = new HashSet<int>();
+        try
+        {
+            foreach (var pipe in Directory.EnumerateFiles(@"\\.\pipe\"))
+            {
+                var name = Path.GetFileName(pipe);
+                if (name.StartsWith(PipePrefix, StringComparison.OrdinalIgnoreCase) && int.TryParse(name[PipePrefix.Length..], out var id)) ids.Add(id);
+            }
+        }
+        catch (Exception)
+        {
+            // pipes cannot be listed: a silent Mastercam then counts as one without the bridge
+        }
+        return ids;
+    }
 
     /// <summary>Mastercam processes, the one with the frontmost window first.</summary>
     public static List<int> Candidates()

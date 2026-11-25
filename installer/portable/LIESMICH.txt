@@ -1,0 +1,51 @@
+PDB portable - file management for Mastercam programs on ONE PC
+================================================================
+(Deutsch unten · Lietuviškai apačioje)
+
+ENGLISH
+Nothing to install. Everything - program, database, backups - lives in this folder.
+
+1. Copy the whole folder to a place where you may write, e.g. C:\PDB
+   (not Program Files, not inside the zip preview).
+2. Double-click PDB.exe. PDB starts in the background and opens in the browser.
+   Log in as Administrator with password  admin  - you choose a new password, then the setup
+   wizard asks for folders, fields, machines and numbering. Suggested folders for the Mastercam
+   and NC files are inside this folder (Dateien\Mastercam, Dateien\NC); any other folder works too.
+3. Admin -> Users: add your coworkers. Users without a password log in by clicking their name,
+   so everybody works under their own name on this PC (locks, versions, who changed what).
+4. Mastercam 2025 or newer: right-click the PDB Helper icon near the clock ->
+   "Mastercam-Bridge einrichten", then restart Mastercam. Once per Windows user.
+   Windows may warn about the unsigned files ("More info" -> "Run anyway").
+
+Every day: PDB.exe to start or open it, "PDB beenden.cmd" to stop it.
+Tip: right-click PDB.exe -> Send to -> Desktop (create shortcut).
+Data: folder "data" (database pdb.sqlite3, automatic daily backups in data\files\backups).
+Backup: stop PDB, copy the whole folder.
+Update: stop PDB, copy the new version's files over this folder - "data" stays.
+Remove: PDB.exe --uninstall (removes the link for "Open" for this Windows user), then delete
+the folder. Careful: the folder holds your database.
+If the folder moves to another drive letter: Admin -> Einstellungen, adjust the main folders.
+
+DEUTSCH
+Keine Installation. Alles - Programm, Datenbank, Sicherungen - liegt in diesem Ordner.
+1. Ganzen Ordner an einen Ort kopieren, an dem du schreiben darfst, z. B. C:\PDB.
+2. PDB.exe doppelklicken. Anmelden als Administrator mit Passwort  admin , neues Passwort
+   wählen; der Einrichtungs-Assistent fragt nach Ordnern, Feldern, Maschinen und Nummern.
+3. Admin -> Benutzer: Kollegen anlegen. Ohne Passwort meldet man sich per Klick auf den Namen an.
+4. Mastercam 2025+: Rechtsklick auf das PDB-Helper-Symbol -> "Mastercam-Bridge einrichten",
+   Mastercam neu starten. Einmal pro Windows-Benutzer.
+Beenden: "PDB beenden.cmd". Daten: Ordner "data". Sicherung: PDB beenden, Ordner kopieren.
+Update: PDB beenden, neue Dateien über diesen Ordner kopieren - "data" bleibt.
+
+LIETUVIŠKAI
+Nieko diegti nereikia. Viskas - programa, duomenų bazė, atsarginės kopijos - šiame aplanke.
+1. Nukopijuokite visą aplanką į vietą, kur galite rašyti, pvz. C:\PDB.
+2. Dukart spustelėkite PDB.exe. Prisijunkite kaip Administratorius, slaptažodis  admin ,
+   nustatykite naują slaptažodį; sąrankos vedlys paklaus aplankų, laukų, staklių ir numeracijos.
+   Kalba: „Mano profilis“ (vardas viršuje dešinėje) -> Išvaizda -> Kalba -> Lietuvių.
+3. Admin -> Naudotojai: pridėkite kolegas. Be slaptažodžio prisijungiama spustelėjus vardą.
+4. Mastercam 2025+: dešiniu pelės mygtuku ant PDB Helper piktogramos -> „Mastercam-Bridge
+   einrichten“, tada iš naujo paleiskite Mastercam. Vieną kartą kiekvienam Windows naudotojui.
+Sustabdyti: „PDB beenden.cmd“. Duomenys: aplankas „data“. Atsarginė kopija: sustabdykite PDB ir
+nukopijuokite aplanką. Atnaujinimas: sustabdykite PDB, nukopijuokite naujus failus ant šio
+aplanko - „data“ lieka.

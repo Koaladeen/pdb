@@ -27,7 +27,7 @@ namespace Pdb.Install
                 if (!silent) MessageBox.Show(L.T("PDB ist nicht installiert (install.json fehlt)."), "PDB");
                 return 1;
             }
-            L.Lang = cfg.Language;
+            L.Lang = string.IsNullOrEmpty(cfg.Language) ? L.Detect() : cfg.Language;
 
             if (args.Contains("--stop"))
             {
@@ -36,8 +36,10 @@ namespace Pdb.Install
                 if (!silent) MessageBox.Show(L.T("PDB ist beendet."), "PDB", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return 0;
             }
-            if (args.Contains("--uninstall")) return Uninstall(cfg, silent, args.Contains("--delete-data"));
+            if (args.Contains("--uninstall"))
+                return cfg.Portable ? Detach(cfg, silent) : Uninstall(cfg, silent, args.Contains("--delete-data"));
 
+            if (cfg.Portable && !PreparePortable(cfg, silent)) return 1;
             var background = args.Contains("--background");
             if (!Server.Healthy(cfg.Port))
             {
@@ -52,6 +54,58 @@ namespace Pdb.Install
             }
             if (cfg.Helper) HelperApp.Start(cfg);
             if (!background) Process.Start(cfg.Url);
+            return 0;
+        }
+
+        /// <summary>Portable folder: what an installation does once, done at every start (cheap) - the
+        /// folder may have been copied to another place or PC, or another Windows user starts it.</summary>
+        static bool PreparePortable(InstallConfig cfg, bool silent)
+        {
+            try
+            {
+                Directory.CreateDirectory(cfg.DataDir);
+                File.WriteAllText(Path.Combine(cfg.DataDir, ".write-test"), "");
+                File.Delete(Path.Combine(cfg.DataDir, ".write-test"));
+            }
+            catch (Exception ex)
+            {
+                if (!silent)
+                    MessageBox.Show(L.F("In diesen Ordner kann nicht geschrieben werden:\n{0}\n\nDen PDB-Ordner bitte an einen Ort kopieren, an dem du schreiben darfst (z. B. C:\\PDB oder Dokumente).", cfg.DataDir)
+                        + "\n\n" + ex.Message, "PDB", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+            // the helper takes the Mastercam bridge from the server's downloads
+            var downloads = Path.Combine(cfg.DataDir, "files", "downloads");
+            var helperDir = Path.GetDirectoryName(cfg.HelperExe)!;
+            if (Directory.Exists(helperDir))
+            {
+                Directory.CreateDirectory(downloads);
+                foreach (var f in Directory.GetFiles(helperDir).Where(f => !f.EndsWith("PdbHelper.exe", StringComparison.OrdinalIgnoreCase)))
+                {
+                    var target = Path.Combine(downloads, Path.GetFileName(f));
+                    if (!File.Exists(target) || File.GetLastWriteTimeUtc(target) != File.GetLastWriteTimeUtc(f)) File.Copy(f, target, true);
+                }
+            }
+            if (cfg.Helper && File.Exists(cfg.HelperExe))
+            {
+                HelperApp.Configure(cfg);
+                Shell.RegisterLinks(cfg.HelperExe); // "Öffnen" on the page -> this folder's helper
+            }
+            return true;
+        }
+
+        /// <summary>Portable: undo what PreparePortable registered for this Windows user. The folder
+        /// itself (program and data) stays; deleting it removes PDB completely.</summary>
+        static int Detach(InstallConfig cfg, bool silent)
+        {
+            if (!silent && MessageBox.Show(L.T("PDB wird beendet und von diesem Windows-Benutzer gelöst (Link für „Öffnen“). Der PDB-Ordner mit deinen Daten bleibt unverändert. Fortfahren?"),
+                    "PDB", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return 1;
+            Server.Stop(cfg);
+            HelperApp.Stop(cfg.InstallDir);
+            Shell.UnregisterLinks(cfg.HelperExe);
+            if (!silent)
+                MessageBox.Show(L.F("Erledigt. Um PDB ganz zu entfernen, den Ordner löschen:\n{0}\n\nAchtung: darin liegt auch die Datenbank (Ordner „data“).", cfg.InstallDir),
+                    "PDB", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return 0;
         }
 

@@ -13,6 +13,11 @@ import sys
 
 def main() -> None:
     cfg = json.load(open(sys.argv[1], encoding="utf-8-sig"))
+    # portable version: paths relative to the folder of install.json (wherever it was copied to)
+    base = os.path.dirname(os.path.abspath(sys.argv[1]))
+    for key in ("DataDir", "SuggestMcam", "SuggestNc"):
+        if cfg.get(key):
+            cfg[key] = os.path.join(base, cfg[key])  # an absolute path stays as it is
     data = cfg["DataDir"]
     os.makedirs(data, exist_ok=True)
 

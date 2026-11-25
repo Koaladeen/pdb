@@ -488,6 +488,10 @@ export const TEXTS = {
 
 export const PATTERNS = [
   [
+    "Alle {0} geöffneten Karten aus der Liste schließen? Die Karten selbst bleiben gespeichert.",
+    "Uždaryti visas {0} atidarytas korteles sąraše? Pačios kortelės lieka išsaugotos."
+  ],
+  [
     "Die ersten {0} von {1} Karten – alle werden importiert.",
     "Rodomos pirmos {0} iš {1} kortelių – importuojamos visos."
   ],

@@ -21,6 +21,12 @@ public sealed class FileSession : IDisposable
     public int Misses { get; set; }
     public bool LockLost { get; set; }
 
+    /// <summary>New file: Mastercam is creating it right now.</summary>
+    public bool Creating { get; set; }
+
+    /// <summary>New file in a Mastercam without bridge: the user saves it under McamPath himself.</summary>
+    public bool UserSaves { get; set; }
+
     /// <summary>Write time + size of the .mcam at open / last check-in; a change means "saved".</summary>
     public (DateTime, long)? Known { get; set; }
 
@@ -79,14 +85,30 @@ public sealed class SessionManager : IDisposable
     readonly System.Threading.Timer heartbeatTimer;
     readonly System.Threading.Timer closeTimer;
 
-    public ServerApi? Api { get; set; }
+    ServerApi? api;
+    int? myUserId;
+
+    public ServerApi? Api
+    {
+        get => api;
+        set
+        {
+            api = value;
+            myUserId = null;
+            // after a (re)login: clean up locks left from before, e.g. helper restarted or PC rebooted
+            if (value is not null) _ = Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ => ReconcileLocks());
+        }
+    }
+
+    /// <summary>How long a new file in a Mastercam without bridge keeps its lock unsaved.</summary>
+    static readonly TimeSpan UserSaveWait = TimeSpan.FromMinutes(30);
 
     public SessionManager(HelperConfig config, Action<string, NoticeKind> notify, IMastercam? mastercam = null)
     {
         this.config = config;
         this.notify = notify;
         this.mastercam = mastercam ?? new Mastercam(config);
-        heartbeatTimer = new System.Threading.Timer(_ => _ = HeartbeatAll(), null, TimeSpan.FromSeconds(config.HeartbeatSeconds), TimeSpan.FromSeconds(config.HeartbeatSeconds));
+        heartbeatTimer = new System.Threading.Timer(_ => _ = HeartbeatAndReconcile(), null, TimeSpan.FromSeconds(config.HeartbeatSeconds), TimeSpan.FromSeconds(config.HeartbeatSeconds));
         closeTimer = new System.Threading.Timer(_ => _ = CheckClosed(), null, TimeSpan.FromSeconds(config.CloseCheckSeconds), TimeSpan.FromSeconds(config.CloseCheckSeconds));
     }
 
@@ -123,18 +145,7 @@ public sealed class SessionManager : IDisposable
         }
 
         var paths = checkout.Paths;
-        var session = new FileSession
-        {
-            OperationId = op.Id,
-            MdmText = op.MdmNumberText,
-            PartName = op.PartName,
-            McamPath = paths["mcam"],
-            NcPostedPath = paths["nc_posted"],
-            ReadOnly = false,
-            Revision = checkout.CurrentRevision,
-            NextArchive = paths["next_archive"],
-            MachineDefinition = op.MachineDefinition ?? "",
-        };
+        var session = NewSession(op, checkout);
         try
         {
             Directory.CreateDirectory(paths["folder"]);
@@ -174,6 +185,19 @@ public sealed class SessionManager : IDisposable
         return new(200, "Ausgecheckt und geöffnet", "edit");
     }
 
+    static FileSession NewSession(OperationInfo op, CheckoutResult checkout) => new()
+    {
+        OperationId = op.Id,
+        MdmText = op.MdmNumberText,
+        PartName = op.PartName,
+        McamPath = checkout.Paths["mcam"],
+        NcPostedPath = checkout.Paths["nc_posted"],
+        ReadOnly = false,
+        Revision = checkout.CurrentRevision,
+        NextArchive = checkout.Paths["next_archive"],
+        MachineDefinition = op.MachineDefinition ?? "",
+    };
+
     OpenOutcome OpenReadOnly(OperationInfo op)
     {
         var source = op.Paths["mcam"];
@@ -199,16 +223,39 @@ public sealed class SessionManager : IDisposable
         // New operation: no file yet. Mastercam (via the bridge) creates it with the machine
         // definition and saves it in the operation folder; the folder watcher checks it in.
         // In the background: Mastercam may first have to start.
-        _ = Task.Run(() =>
+        s.Creating = true;
+        _ = Task.Run(async () =>
         {
-            var error = mastercam.CreateNew(s.McamPath, File.Exists(s.MachineDefinition) ? s.MachineDefinition : "");
-            if (error is null)
+            NewFileOutcome result;
+            try
+            {
+                result = mastercam.CreateNew(s.McamPath, File.Exists(s.MachineDefinition) ? s.MachineDefinition : "");
+            }
+            catch (Exception ex)
+            {
+                result = new(ex.Message);
+            }
+            finally
+            {
+                s.Creating = false;
+            }
+            if (result.Error is null)
             {
                 notify($"{s.Title}: neue Datei angelegt ({Path.GetFileName(s.McamPath)}{(s.MachineDefinition.Length > 0 ? $", {Path.GetFileName(s.MachineDefinition)}" : "")}).", NoticeKind.Info);
                 return;
             }
-            notify($"{s.Title}: {error}", NoticeKind.Warning);
-            if (!File.Exists(s.McamPath)) System.Diagnostics.Process.Start("explorer.exe", $"\"{Path.GetDirectoryName(s.McamPath)}\"");
+            if (File.Exists(s.McamPath)) return; // saved meanwhile after all
+            if (result.UserSaves)
+            {
+                // no bridge: the user saves it himself; the close check waits a while for that
+                s.UserSaves = true;
+                notify($"{s.Title}: {result.Error}", NoticeKind.Warning);
+                System.Diagnostics.Process.Start("explorer.exe", $"\"{Path.GetDirectoryName(s.McamPath)}\"");
+                return;
+            }
+            // nothing was created: do not keep a lock for a file that does not exist
+            notify($"{s.Title}: {result.Error}", NoticeKind.Warning);
+            await Close(s.OperationId, "neue Datei nicht angelegt");
         });
     }
 
@@ -552,6 +599,82 @@ public sealed class SessionManager : IDisposable
         }
     }
 
+    async Task HeartbeatAndReconcile()
+    {
+        await HeartbeatAll();
+        await ReconcileLocks();
+    }
+
+    int reconciling;
+
+    /// <summary>Locks the server has for this user on this PC that no session here knows about
+    /// (helper restarted, crashed, PC rebooted, login expired): if Mastercam has the file open,
+    /// take care of it again; if not, release the lock. Only locks whose heartbeat stopped, so a
+    /// file being opened right now is never touched.</summary>
+    public async Task ReconcileLocks()
+    {
+        var a = Api;
+        if (a is null || Interlocked.Exchange(ref reconciling, 1) == 1) return;
+        try
+        {
+            myUserId ??= (await a.Me()).Id;
+            var quiet = DateTime.UtcNow - TimeSpan.FromSeconds(2 * config.HeartbeatSeconds + 5); // two heartbeats missed
+            foreach (var l in await a.Locks())
+            {
+                if (l.UserId != myUserId || !string.Equals(l.PcName, a.PcName, StringComparison.OrdinalIgnoreCase)) continue;
+                lock (gate) if (sessions.ContainsKey(l.OperationId)) continue;
+                var heartbeat = ParseUtc(l.LastHeartbeat);
+                if (heartbeat is null || heartbeat > quiet) continue;
+
+                var op = await a.Operation(l.OperationId);
+                var state = mastercam.State(op.Paths["mcam"]);
+                if (state == OpenState.Unknown) continue;
+                if (state == OpenState.Open)
+                {
+                    await Adopt(a, op, heartbeat.Value);
+                    continue;
+                }
+                await a.Release(op.Id);
+                Log.Write($"Released leftover lock op {op.Id} (PDB-Nr. {op.MdmNumberText}): not open in Mastercam");
+                notify($"PDB-Nr. {op.MdmNumberText}{(op.PartName.Length > 0 ? $" – {op.PartName}" : "")}: freigegeben (war gesperrt, ist aber in keinem Mastercam offen)", NoticeKind.Info);
+            }
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            Log.Write($"Lock check failed: {ex.Message}"); // server away: next round
+        }
+        finally
+        {
+            Interlocked.Exchange(ref reconciling, 0);
+        }
+    }
+
+    /// <summary>Takes care of a file that is still open in Mastercam from before the helper
+    /// (re)started: heartbeat, check-in on save, release on close.</summary>
+    async Task Adopt(ServerApi a, OperationInfo op, DateTime lastHeartbeat)
+    {
+        NcHeader.Remember(op.PlaceholderPrefix);
+        var checkout = await a.Checkout(op.Id); // same user and PC: refreshes the lock
+        var session = NewSession(op, checkout);
+        var stamp = FileSession.Stamp(session.McamPath);
+        // saved while nobody watched: null makes the next check-in (save or close) record it
+        session.Known = stamp is { } st && st.Item1 > lastHeartbeat ? null : stamp;
+        session.PictureAt = op.PictureAt;
+        Watch(session, checkout.Paths["folder"]);
+        lock (gate)
+        {
+            if (sessions.ContainsKey(op.Id)) { session.Dispose(); return; } // opened meanwhile
+            sessions[op.Id] = session;
+        }
+        Log.Write($"Adopted op {op.Id} ({session.McamPath}): still open in Mastercam");
+        notify($"{session.Title}: ist noch in Mastercam offen – wird wieder überwacht", NoticeKind.Info);
+    }
+
+    static DateTime? ParseUtc(string iso) =>
+        DateTime.TryParse(iso, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var t)
+            ? t : null;
+
     int checking;
 
     async Task CheckClosed()
@@ -562,14 +685,21 @@ public sealed class SessionManager : IDisposable
             foreach (var s in All)
             {
                 if ((DateTime.Now - s.OpenedAt).TotalSeconds < config.StartupGraceSeconds) continue;
-                if (!File.Exists(s.McamPath) && !s.ReadOnly)
+                if (s.Creating)
                 {
-                    s.Misses = 0; // new file not saved yet: wait for the user
+                    s.Misses = 0; // Mastercam is still creating the new file
                     continue;
                 }
-                if (mastercam.IsOpen(s.McamPath))
+                var state = mastercam.State(s.McamPath);
+                if (state == OpenState.Unknown) continue; // Mastercam busy: ask again next round
+                if (state == OpenState.Open)
                 {
                     s.Misses = 0;
+                    continue;
+                }
+                if (s.UserSaves && !File.Exists(s.McamPath) && DateTime.Now - s.OpenedAt < UserSaveWait)
+                {
+                    s.Misses = 0; // new file in a Mastercam without bridge: give the user time to save
                     continue;
                 }
                 if (++s.Misses >= config.CloseAfterMisses) await Close(s.OperationId, "in Mastercam geschlossen");

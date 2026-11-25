@@ -8,6 +8,9 @@ namespace PdbHelper;
 
 // Shapes of the server responses (snake_case JSON). Only the fields the helper needs.
 public sealed record LockInfo(int UserId, string User, string PcName, string LockedAt, bool Stale);
+
+/// <summary>One row of GET /locks.</summary>
+public sealed record LockRow(int OperationId, int UserId, string PcName, string LockedAt, string LastHeartbeat, bool Stale);
 public sealed record ArticleInfo(int Id, Dictionary<string, JsonElement> Data);
 public sealed record OperationInfo(
     int Id,
@@ -92,6 +95,7 @@ public sealed class ServerApi
     public Task<OperationInfo> Operation(int id) => Send<OperationInfo>(HttpMethod.Get, $"operations/{id}");
     public Task<CheckoutResult> Checkout(int id) => Send<CheckoutResult>(HttpMethod.Post, $"operations/{id}/checkout", new { pc_name = PcName });
     public Task Heartbeat(int id) => Send<JsonElement>(HttpMethod.Post, $"operations/{id}/heartbeat", new { pc_name = PcName });
+    public Task<List<LockRow>> Locks() => Send<List<LockRow>>(HttpMethod.Get, "locks");
     public Task Release(int id) => Send<JsonElement>(HttpMethod.Post, $"operations/{id}/release", new { pc_name = PcName });
     public Task ImportCopied(int id) => Send<JsonElement>(HttpMethod.Post, $"operations/{id}/import-copied", new { pc_name = PcName });
     public Task<MachineChangeResult> ChangeMachine(int id, int machineId) =>

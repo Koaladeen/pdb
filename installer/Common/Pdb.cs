@@ -78,7 +78,9 @@ namespace Pdb.Install
     {
         public static void Start(InstallConfig c)
         {
-            if (!File.Exists(c.HelperExe) || Process.GetProcessesByName("PdbHelper").Length > 0) return;
+            // several Windows users on one PC: each needs its own helper, so only look at this session
+            var session = Process.GetCurrentProcess().SessionId;
+            if (!File.Exists(c.HelperExe) || Process.GetProcessesByName("PdbHelper").Any(p => p.SessionId == session)) return;
             Process.Start(new ProcessStartInfo(c.HelperExe) { UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(c.HelperExe) });
         }
 
